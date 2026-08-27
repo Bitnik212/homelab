@@ -23,6 +23,31 @@ splittunnel_static_files:
     - name: /opt/splittunnel
     - source: salt://router/files/splittunnel
     - file_mode: '0755'
+    # custom_domains.txt is user-editable data, not a script — managed
+    # separately below (seed-once, never overwritten) so edits on the box
+    # survive re-applies instead of getting reset to the repo's seed value.
+    - exclude_pattern: custom_domains\.txt
+    - require:
+      - file: splittunnel_dir
+
+# Seed-once, user-editable data files: created from the repo's version (or
+# empty for asn.txt, which the repo doesn't ship) on first run, then left
+# alone — state.apply must never clobber domains/ASNs you've added since.
+splittunnel_asn_txt:
+  file.managed:
+    - name: /opt/splittunnel/asn.txt
+    - replace: False
+    - contents: ''
+    - mode: '0644'
+    - require:
+      - file: splittunnel_dir
+
+splittunnel_custom_domains_txt:
+  file.managed:
+    - name: /opt/splittunnel/custom_domains.txt
+    - replace: False
+    - source: salt://router/files/splittunnel/custom_domains.txt
+    - mode: '0644'
     - require:
       - file: splittunnel_dir
 
@@ -57,6 +82,8 @@ split_tunnel_service_running:
     - require:
       - pkg: splittunnel_deps
       - file: split_tunnel_service
+      - file: splittunnel_asn_txt
+      - file: splittunnel_custom_domains_txt
       - cmd: splittunnel_systemd_reload
       - service: wg0_service
     - watch:

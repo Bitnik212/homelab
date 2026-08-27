@@ -16,6 +16,10 @@ WAN_IF="{{ st.get('wan_if', '') }}"
 WAN_GW="{{ st.get('wan_gw', '') }}"
 WG_IF="wg0"
 WG_ENDPOINT="{{ st.get('wg_endpoint_ip', '') }}"
+# Local/management subnet that must never be swept into the tunnel-by-default
+# table — without this, anything not explicitly excepted (including this
+# box's own Salt control channel) gets routed via wg0 and can black-hole.
+LAN_CIDR="{{ st.get('lan_cidr', '') }}"
 
 TABLE_NAME="vpn"
 TABLE_ID="200"
@@ -37,15 +41,28 @@ ensure_rt_table() {
 
 flush_route_cache() { ip route flush cache >/dev/null 2>&1 || true; }
 
-# Optional rollback if you screw up SSH during changes
+# Optional rollback if you screw up SSH during changes.
+#
+# Run via systemd-run as its own transient unit, deliberately OUTSIDE this
+# service's cgroup: a plain backgrounded `(...) &` subshell gets killed by
+# systemd when this (the parent) process exits — including on failure —
+# which silently defeats the whole point of a rollback safety net.
 arm_rollback() {
   local sec="$1"
   [[ "$sec" == "0" ]] && return 0
-  ( sleep "$sec"
-    ip rule del pref 200 >/dev/null 2>&1 || true
-    flush_route_cache
-  ) >/dev/null 2>&1 &
-  echo "Rollback armed: will remove pref 200 in ${sec}s (env ROLLBACK_AFTER_SECONDS=0 to disable)."
+  if have_cmd systemd-run; then
+    systemd-run --unit="splittunnel-rollback-$$" --on-active="${sec}" \
+      /bin/bash -c 'ip rule del pref 200 >/dev/null 2>&1 || true; ip route flush cache >/dev/null 2>&1 || true' \
+      >/dev/null 2>&1 || true
+    echo "Rollback armed via systemd-run: will remove pref 200 in ${sec}s (env ROLLBACK_AFTER_SECONDS=0 to disable)."
+  else
+    ( sleep "$sec"
+      ip rule del pref 200 >/dev/null 2>&1 || true
+      flush_route_cache
+    ) >/dev/null 2>&1 &
+    disown
+    echo "Rollback armed: will remove pref 200 in ${sec}s (env ROLLBACK_AFTER_SECONDS=0 to disable)."
+  fi
 }
 
 ensure_ipset() {
@@ -53,6 +70,15 @@ ensure_ipset() {
   ipset create "$IPSET_NAME" hash:net family inet -exist
   # NOTE: You must populate it yourself, e.g.:
   # ipset add ru 5.8.0.0/13 -exist
+}
+
+# ip rule add is not idempotent (duplicate add fails "File exists", which
+# aborts under set -e) — this service can legitimately be started more than
+# once (reboot, Salt re-applying state), so every rule goes through here.
+add_rule_idem() {
+  local pref="$1"; shift
+  ip rule del pref "$pref" >/dev/null 2>&1 || true
+  ip rule add pref "$pref" "$@"
 }
 
 ensure_policy_routing() {
@@ -65,18 +91,20 @@ ensure_policy_routing() {
   ip route replace "${WG_ENDPOINT}/32" via "$WAN_GW" dev "$WAN_IF" || true
 
   # ip rules
-  ip rule add pref 40 to 172.16.0.0/12 lookup main # docker net fix
-  ip rule add pref 41 to 127.0.0.0/8 lookup main # docker net fix
+  add_rule_idem 40 to 172.16.0.0/12 lookup main # docker net fix
+  add_rule_idem 41 to 127.0.0.0/8 lookup main # docker net fix
 
   #ip rule add pref 42 to 172.16.0.0/12 lookup main
   #ip rule add pref 43 to 10.0.0.0/8 lookup main
   #ip rule add pref 44 to 192.168.0.0/16 lookup main
 
-  ip rule add pref 50 to $WG_ENDPOINT/32 lookup main
-  ip rule del pref 100 >/dev/null 2>&1 || true
-  ip rule del pref 200 >/dev/null 2>&1 || true
-  ip rule add pref 100 fwmark "$MARK_HEX" lookup main
-  ip rule add pref 200 lookup "$TABLE_NAME"
+  if [[ -n "$LAN_CIDR" ]]; then
+    add_rule_idem 45 to "$LAN_CIDR" lookup main # keep local/management traffic (incl. Salt) off the tunnel
+  fi
+
+  add_rule_idem 50 to $WG_ENDPOINT/32 lookup main
+  add_rule_idem 100 fwmark "$MARK_HEX" lookup main
+  add_rule_idem 200 lookup "$TABLE_NAME"
 
   flush_route_cache
 }
@@ -126,7 +154,8 @@ ensure_iptables_mangle() {
   iptables -t mangle -A SPLIT_PRE -i "$WAN_IF" -p tcp --dport 22 -j MARK --set-mark "$MARK_HEX"
   iptables -t mangle -A SPLIT_PRE -i "$WAN_IF" -p tcp --dport 22 -j CONNMARK --save-mark
 
-  iptables -t nat -I POSTROUTING 1 -m mark --mark $MARK_HEX -o $WAN_IF -j MASQUERADE
+  iptables -t nat -C POSTROUTING -m mark --mark "$MARK_HEX" -o "$WAN_IF" -j MASQUERADE 2>/dev/null || \
+  iptables -t nat -I POSTROUTING 1 -m mark --mark "$MARK_HEX" -o "$WAN_IF" -j MASQUERADE
 
   # mark docker traffic to RU ipset
   # restore mark for established
@@ -151,9 +180,11 @@ ensure_iptables_mangle() {
     -j CONNMARK --save-mark
 
   # Fix incoming connections for $WAN_IF
-  iptables -t mangle -A PREROUTING -i $WAN_IF -j CONNMARK --set-mark 0x1
-  iptables -t mangle -A OUTPUT -m connmark --mark 0x1 -j MARK --set-mark 0x1
+  iptables -t mangle -C PREROUTING -i "$WAN_IF" -j CONNMARK --set-mark 0x1 2>/dev/null || \
+  iptables -t mangle -A PREROUTING -i "$WAN_IF" -j CONNMARK --set-mark 0x1
 
+  iptables -t mangle -C OUTPUT -m connmark --mark 0x1 -j MARK --set-mark 0x1 2>/dev/null || \
+  iptables -t mangle -A OUTPUT -m connmark --mark 0x1 -j MARK --set-mark 0x1
 }
 
 ensure_resolved_dns() {
@@ -202,4 +233,10 @@ main() {
 }
 
 main "$@"
-sudo ./update-ruips.sh && sudo ./load-custom-domains.sh && sudo ./refresh-ru-ips.sh
+
+# Best-effort IP-list refresh — must never fail the unit (Type=oneshot's
+# exit code is the service's result, and a failed/retried service is how
+# the "File exists" / rollback issues above got triggered in the first
+# place). update-ruips.sh needs asn.txt, which this repo doesn't ship —
+# add it under /opt/splittunnel before relying on this chain.
+( cd "$(dirname "${BASH_SOURCE[0]}")" && sudo ./update-ruips.sh && sudo ./load-custom-domains.sh && sudo ./refresh-ru-ips.sh ) || true

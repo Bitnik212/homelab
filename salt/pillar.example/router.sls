@@ -7,9 +7,10 @@ router:
       - 10.0.0.0/8
       - 192.168.0.0/16
       - 172.16.0.0/12
+    # Forward to an internal DNS server on your LAN to inherit its records,
+    # or use public resolvers (e.g. 1.1.1.1, 9.9.9.9) if you don't have one.
     forwarders:
-      - 1.1.1.1
-      - 9.9.9.9
+      - 10.20.10.100
     local_records: []
     #  - {name: 'vault.home.', value: '10.10.10.51'}
 
@@ -41,4 +42,7 @@ router:
     wan_if: ''    # e.g. ens18 / eth0
     wan_gw: ''    # WAN gateway IP
     wg_endpoint_ip: ''  # resolved IP of your AWG server's endpoint host
-    rollback_after_seconds: 0
+    # Required — without this, local/management traffic (incl. Salt's own
+    # control channel) can get swept into the tunnel-by-default table.
+    lan_cidr: ''  # e.g. 10.20.10.0/24
+    rollback_after_seconds: 60
