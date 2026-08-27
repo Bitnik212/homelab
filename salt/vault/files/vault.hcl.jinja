@@ -1,0 +1,22 @@
+ui = true
+
+listener "tcp" {
+  address     = "0.0.0.0:8200"
+  # TODO: enable TLS before using this outside a lab environment.
+  tls_disable = 1
+}
+
+storage "raft" {
+  path    = "/opt/vault/data"
+  node_id = "{{ grains['id'] }}"
+
+  {%- for peer in pillar.get('vault', {}).get('cluster_nodes', ['vault-1', 'vault-2', 'vault-3']) %}
+  retry_join {
+    leader_api_addr = "http://{{ peer }}:8200"
+  }
+  {%- endfor %}
+}
+
+cluster_addr  = "http://{{ grains['fqdn_ip4'][0] }}:8201"
+api_addr      = "http://{{ grains['fqdn_ip4'][0] }}:8200"
+disable_mlock = true

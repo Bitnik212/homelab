@@ -1,0 +1,15 @@
+datacenter        = "{{ pillar.get('consul', {}).get('datacenter', 'dc1') }}"
+data_dir          = "/opt/consul/data"
+server            = true
+bootstrap_expect  = {{ pillar.get('consul', {}).get('bootstrap_expect', 3) }}
+bind_addr         = "{{ grains['fqdn_ip4'][0] }}"
+client_addr       = "0.0.0.0"
+retry_join        = {{ pillar.get('consul', {}).get('retry_join', ['consul-1', 'consul-2', 'consul-3']) | tojson }}
+{%- set encrypt_key = pillar.get('consul', {}).get('encrypt_key', '') %}
+{%- if encrypt_key %}
+encrypt           = "{{ encrypt_key }}"
+{%- endif %}
+
+ui_config {
+  enabled = true
+}

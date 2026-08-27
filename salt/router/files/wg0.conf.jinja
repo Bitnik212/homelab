@@ -1,0 +1,25 @@
+{%- set awg = pillar.get('router', {}).get('amneziawg', {}) %}
+[Interface]
+PrivateKey = {{ awg.get('private_key', '') }}
+Address    = {{ awg.get('address', '') }}
+{%- if awg.get('dns') %}
+DNS = {{ awg['dns'] }}
+{%- endif %}
+{%- for p in ['Jc', 'Jmin', 'Jmax', 'S1', 'S2', 'H1', 'H2', 'H3', 'H4'] %}
+{%- if awg.get(p) %}
+{{ p }} = {{ awg[p] }}
+{%- endif %}
+{%- endfor %}
+{#- Table = off: split-tunnel.sh (router.splittunnel state) builds its own
+    "vpn" routing table / ip rules, so awg-quick must not also try to
+    auto-manage a default route/fwmark table for AllowedIPs = 0.0.0.0/0. #}
+Table = off
+
+[Peer]
+PublicKey = {{ awg.get('server_public_key', '') }}
+{%- if awg.get('preshared_key') %}
+PresharedKey = {{ awg['preshared_key'] }}
+{%- endif %}
+Endpoint = {{ awg.get('endpoint', '') }}
+AllowedIPs = {{ awg.get('allowed_ips', ['0.0.0.0/0', '::/0']) | join(', ') }}
+PersistentKeepalive = {{ awg.get('persistent_keepalive', 25) }}

@@ -1,0 +1,21 @@
+{%- set dns = pillar.get('router', {}).get('dns', {}) %}
+server:
+  interface: 0.0.0.0
+  access-control: 127.0.0.0/8 allow
+  {%- for net in dns.get('allowed_networks', ['10.0.0.0/8', '192.168.0.0/16', '172.16.0.0/12']) %}
+  access-control: {{ net }} allow
+  {%- endfor %}
+  do-ip6: no
+
+  {%- for rec in dns.get('local_records', []) %}
+  local-data: "{{ rec['name'] }} A {{ rec['value'] }}"
+  {%- endfor %}
+
+{%- set forwarders = dns.get('forwarders', ['1.1.1.1', '9.9.9.9']) %}
+{%- if forwarders %}
+forward-zone:
+  name: "."
+  {%- for f in forwarders %}
+  forward-addr: {{ f }}
+  {%- endfor %}
+{%- endif %}
