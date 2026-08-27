@@ -1,0 +1,5 @@
+proxmox_api_endpoint = "https://YOUR-PVE-HOST:8006/api2/json"
+proxmox_api_token    = "user@pve!terraform=00000000-0000-0000-0000-000000000000"
+proxmox_tls_insecure = false
+proxmox_ssh_username = "root"
+proxmox_node         = "one-main"
