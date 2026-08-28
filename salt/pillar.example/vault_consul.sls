@@ -16,6 +16,10 @@ vault_version: '1.21.4-1'
 consul:
   datacenter: dc1
   bootstrap_expect: 3
+  # Prefer IPs over hostnames here if these nodes sit behind a resolver
+  # you don't fully control (e.g. a router doing DNS for a NAT'd subnet)
+  # -- retry_join is on the cluster-bootstrap critical path, and DNS
+  # flakiness there is a bad place to discover it.
   retry_join:
     - consul-1
     - consul-2

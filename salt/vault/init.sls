@@ -47,5 +47,6 @@ vault_service:
     - require:
       - file: vault_data_dir
       - file: vault_config
+      - service: consul_client_service
     - watch:
       - file: vault_config

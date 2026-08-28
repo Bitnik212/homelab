@@ -17,6 +17,16 @@ storage "raft" {
   {%- endfor %}
 }
 
-cluster_addr  = "http://{{ grains['fqdn_ip4'][0] }}:8201"
-api_addr      = "http://{{ grains['fqdn_ip4'][0] }}:8200"
+{#- grains['fqdn_ip4'] resolves via /etc/hosts (127.0.1.1 <hostname> on
+   Debian/Ubuntu) -- unreachable by peers. Query the interface directly. #}
+{%- set node_ip = salt['network.interface_ip']('eth0') %}
+cluster_addr  = "http://{{ node_ip }}:8201"
+api_addr      = "http://{{ node_ip }}:8200"
 disable_mlock = true
+
+# Registers this Vault node in Consul's service catalog via the local
+# Consul client agent (consul.client state) -- talks to it over loopback,
+# not the Consul server cluster directly.
+service_registration "consul" {
+  address = "127.0.0.1:8500"
+}

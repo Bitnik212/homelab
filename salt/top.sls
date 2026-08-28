@@ -1,5 +1,6 @@
 base:
   'vault-*':
+    - consul.client
     - vault
   'consul-*':
     - consul
