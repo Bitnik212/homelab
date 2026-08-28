@@ -18,7 +18,7 @@ myreels:
     password: 'CHANGEME'
 
   reels_bot:
-    reels_api_url: 'https://api.reels.bitt.app'
+    reels_api_url: 'http://api.reels.bitt.app'
     telegram_bot_token: 'CHANGEME'
     telegram_bot_username: 'reelsbittbot'
     pocketbase_hostname: 'myreels.pocketbase.moe'

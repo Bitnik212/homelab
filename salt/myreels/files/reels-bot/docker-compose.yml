@@ -7,6 +7,11 @@ services:
         condition: service_healthy
     env_file:
       - .env
+    # 127.0.0.1 inside this container is its own loopback, not the VM's --
+    # host-gateway resolves to the real VM interface, where nginx actually
+    # listens for api.reels.bitt.app.
+    extra_hosts:
+      - "api.reels.bitt.app:host-gateway"
 
   redis:
     image: redis:7-alpine

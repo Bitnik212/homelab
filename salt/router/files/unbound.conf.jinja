@@ -7,6 +7,14 @@ server:
   {%- endfor %}
   do-ip6: no
 
+  # DNS Flag Day 2020 safe value -- avoids IP fragmentation on the
+  # EDNS0 path to the forwarder, which was silently dropping packets
+  # (systemd-resolved logs on hashibr clients showed it repeatedly
+  # falling back to "degraded feature set UDP instead of UDP+EDNS0"
+  # for this server; musl-based containers -- no equivalent retry --
+  # just got instant NXDOMAIN/SERVFAIL instead of resolving).
+  edns-buffer-size: 1232
+
   {%- for rec in dns.get('local_records', []) %}
   local-data: "{{ rec['name'] }} A {{ rec['value'] }}"
   {%- endfor %}
