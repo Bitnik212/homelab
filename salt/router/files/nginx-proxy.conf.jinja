@@ -1,0 +1,15 @@
+{%- set vhosts = pillar.get('router', {}).get('proxy', {}).get('vhosts', []) %}
+{%- for vh in vhosts %}
+server {
+    listen 80;
+    server_name {{ vh['server_name'] }};
+
+    location / {
+        proxy_pass http://{{ vh['upstream'] }};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+{% endfor %}

@@ -1,0 +1,23 @@
+services:
+  app:
+    image: ghcr.io/bitnik212/simple-reels-api:main
+    restart: always
+    ports:
+      - "8080:8086"
+    env_file:
+      - .env
+
+  db:
+    image: postgres:16
+    restart: always
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_DB: reels
+      POSTGRES_USER: $DB_USER
+      POSTGRES_PASSWORD: $DB_PASSWORD
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

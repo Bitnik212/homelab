@@ -1,0 +1,11 @@
+services:
+  app:
+    image: ghcr.io/imgproxy/imgproxy:latest
+    ports:
+      - "8086:8080"
+    restart: always
+    environment:
+      IMGPROXY_ALLOW_INSECURE_URLS: "true"
+      IMGPROXY_ALLOWED_SOURCES: "https://*.cdninstagram.com/"
+      IMGPROXY_DEVELOPMENT_ERRORS_MODE: "true"
+      IMGPROXY_ENABLE_DEBUG_HEADERS: "true"

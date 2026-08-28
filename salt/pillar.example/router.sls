@@ -58,3 +58,10 @@ router:
     dns: '10.30.30.1'      # router-1's own unbound
     range_start: '10.30.30.10'
     range_end: '10.30.30.250'
+
+  # Plain-HTTP proxy_pass into hashibr-only VMs. No TLS here yet -- add
+  # certbot + a listen 443 block per vhost once that's wanted.
+  proxy:
+    vhosts: []
+    #  - server_name: 'api.example.com'
+    #    upstream: '10.30.30.20:8080'

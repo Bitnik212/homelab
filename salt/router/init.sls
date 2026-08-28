@@ -5,3 +5,4 @@ include:
   - router.splittunnel
   - router.dhcp
   - router.nat
+  - router.nginx

@@ -6,3 +6,5 @@ base:
     - consul
   'router-*':
     - router
+  'vm-myreels-bot*':
+    - myreels
