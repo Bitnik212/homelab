@@ -1,0 +1,11 @@
+{%- set node_ip = salt['network.interface_ip']('eth0') %}
+datacenter        = "{{ pillar.get('consul', {}).get('datacenter', 'dc1') }}"
+data_dir          = "/opt/consul/data"
+server            = false
+bind_addr         = "{{ node_ip }}"
+client_addr       = "127.0.0.1 {{ node_ip }}"
+retry_join        = {{ pillar.get('consul', {}).get('retry_join', []) | tojson }}
+{%- set encrypt_key = pillar.get('consul', {}).get('encrypt_key', '') %}
+{%- if encrypt_key %}
+encrypt           = "{{ encrypt_key }}"
+{%- endif %}

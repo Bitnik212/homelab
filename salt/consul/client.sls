@@ -1,7 +1,11 @@
+# Consul client agent -- for nodes that need to reach a Consul cluster
+# (e.g. Vault's service_registration "consul" stanza) without being a
+# Consul server themselves. See consul/init.sls for the server role.
+
 include:
   - consul.pkg
 
-consul_data_dir:
+consul_client_data_dir:
   file.directory:
     - name: /opt/consul/data
     - user: consul
@@ -11,10 +15,10 @@ consul_data_dir:
     - require:
       - pkg: consul_pkg
 
-consul_config:
+consul_client_config:
   file.managed:
     - name: /etc/consul.d/consul.hcl
-    - source: salt://consul/files/consul.hcl.jinja
+    - source: salt://consul/files/consul-client.hcl.jinja
     - template: jinja
     - user: consul
     - group: consul
@@ -22,12 +26,12 @@ consul_config:
     - require:
       - pkg: consul_pkg
 
-consul_service:
+consul_client_service:
   service.running:
     - name: consul
     - enable: True
     - require:
-      - file: consul_data_dir
-      - file: consul_config
+      - file: consul_client_data_dir
+      - file: consul_client_config
     - watch:
-      - file: consul_config
+      - file: consul_client_config
