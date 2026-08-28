@@ -50,3 +50,9 @@ variable "consul_node_count" {
   type        = number
   default     = 3
 }
+
+variable "cluster_bridge" {
+  description = "Proxmox bridge for the Vault/Consul cluster nodes' NICs"
+  type        = string
+  default     = "hashibr"
+}

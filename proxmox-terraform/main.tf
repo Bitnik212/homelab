@@ -48,6 +48,6 @@ resource "proxmox_virtual_environment_vm" "node" {
   }
 
   network_device {
-    bridge = "vmbr0"
+    bridge = var.cluster_bridge
   }
 }

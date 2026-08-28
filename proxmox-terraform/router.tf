@@ -23,14 +23,26 @@ resource "proxmox_virtual_environment_vm" "router" {
   initialization {
     datastore_id = var.vm_datastore_id
 
+    # net0: WAN/management, on vmbr0 (DHCP)
     ip_config {
       ipv4 {
         address = "dhcp"
+      }
+    }
+
+    # net1: hashibr, static — router-1 is the gateway/DHCP server for this net
+    ip_config {
+      ipv4 {
+        address = "10.30.30.1/24"
       }
     }
   }
 
   network_device {
     bridge = "vmbr0"
+  }
+
+  network_device {
+    bridge = var.cluster_bridge
   }
 }
