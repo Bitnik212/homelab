@@ -20,6 +20,10 @@ WG_ENDPOINT="{{ st.get('wg_endpoint_ip', '') }}"
 # table — without this, anything not explicitly excepted (including this
 # box's own Salt control channel) gets routed via wg0 and can black-hole.
 LAN_CIDR="{{ st.get('lan_cidr', '') }}"
+{%- set h = pillar.get('router', {}).get('hashibr', {}) %}
+# hashibr is router-1's OWN directly-connected subnet — same reasoning as
+# LAN_CIDR above, just for the other interface.
+HASHIBR_CIDR="{{ h.get('subnet_cidr', '') }}"
 
 TABLE_NAME="vpn"
 TABLE_ID="200"
@@ -100,6 +104,15 @@ ensure_policy_routing() {
 
   if [[ -n "$LAN_CIDR" ]]; then
     add_rule_idem 45 to "$LAN_CIDR" lookup main # keep local/management traffic (incl. Salt) off the tunnel
+  fi
+
+  if [[ -n "$HASHIBR_CIDR" ]]; then
+    # Without this, router-1's OWN replies to directly-connected peers on
+    # hashibr (e.g. unbound answering a DNS query from consul-1) fall
+    # through to pref 200 and get shoved into wg0 instead of delivered
+    # locally on eth1 -- the reply vanishes into the tunnel and the peer
+    # just hangs waiting.
+    add_rule_idem 46 to "$HASHIBR_CIDR" lookup main
   fi
 
   add_rule_idem 50 to $WG_ENDPOINT/32 lookup main

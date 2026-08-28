@@ -46,3 +46,15 @@ router:
     # control channel) can get swept into the tunnel-by-default table.
     lan_cidr: ''  # e.g. 10.20.10.0/24
     rollback_after_seconds: 60
+
+  # router-1's second NIC — gateway/DHCP/NAT for the cluster bridge
+  # (proxmox-terraform's cluster_bridge var, e.g. hashibr).
+  hashibr:
+    interface: ''       # e.g. eth1 — the NIC actually on that bridge
+    subnet_cidr: '10.30.30.0/24'
+    network: '10.30.30.0'
+    netmask: '255.255.255.0'
+    gateway: '10.30.30.1'  # must match router-1's static address on that NIC
+    dns: '10.30.30.1'      # router-1's own unbound
+    range_start: '10.30.30.10'
+    range_end: '10.30.30.250'

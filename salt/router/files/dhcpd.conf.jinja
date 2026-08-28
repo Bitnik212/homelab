@@ -1,0 +1,17 @@
+{%- set h = pillar.get('router', {}).get('hashibr', {}) %}
+default-lease-time 600;
+max-lease-time 7200;
+authoritative;
+
+# All 6 vault-*/consul-* VMs were cloned from the same template without
+# regenerating machine-id, so they present an IDENTICAL DHCP client-id
+# (option 61) despite having distinct MACs -- isc-dhcp-server keys leases
+# by client-id when present, so every renewal just handed the same lease
+# to whichever VM asked most recently. Key strictly by MAC instead.
+ignore-client-uids true;
+
+subnet {{ h.get('network', '10.30.30.0') }} netmask {{ h.get('netmask', '255.255.255.0') }} {
+  range {{ h.get('range_start', '10.30.30.10') }} {{ h.get('range_end', '10.30.30.250') }};
+  option routers {{ h.get('gateway', '10.30.30.1') }};
+  option domain-name-servers {{ h.get('dns', '10.30.30.1') }};
+}
