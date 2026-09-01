@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -u
+
+# Verifies router-1's public egress IP still matches the AmneziaWG
+# endpoint (i.e. traffic is actually leaving via wg0, not WAN) and
+# re-runs split-tunnel.sh if it's drifted. Run every 5 min via cron
+# (router.publicip_check state); templated so REQUIRED_IP always tracks
+# pillar's router.splittunnel.wg_endpoint_ip instead of drifting out of
+# sync with it.
+
+{%- set st = pillar.get('router', {}).get('splittunnel', {}) %}
+
+WORKDIR="/opt/splittunnel"
+SPLIT_TUNNEL_SCRIPT="./split-tunnel.sh"
+
+# Public IP that MUST be returned -- the AmneziaWG endpoint's resolved IP
+# (see router.splittunnel / split-tunnel.sh.jinja, same pillar key).
+REQUIRED_IP="{{ st.get('wg_endpoint_ip', '') }}"
+
+CHECK_URL="https://2ip.io"
+
+current_ip="$(curl -4 -fsS --max-time 10 "$CHECK_URL" | tr -d '[:space:]')"
+
+if [[ -z "$current_ip" ]]; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') ERROR: Failed to get public IP from $CHECK_URL"
+    exit 1
+fi
+
+echo "$(date '+%Y-%m-%d %H:%M:%S') Current IP: $current_ip"
+
+if [[ "$current_ip" != "$REQUIRED_IP" ]]; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') Expected $REQUIRED_IP, got $current_ip. Restarting split tunnel..."
+
+    cd "$WORKDIR" || {
+        echo "ERROR: Cannot cd to $WORKDIR"
+        exit 1
+    }
+
+    "$SPLIT_TUNNEL_SCRIPT"
+else
+    echo "$(date '+%Y-%m-%d %H:%M:%S') IP is correct. Nothing to do."
+fi
