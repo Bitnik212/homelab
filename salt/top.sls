@@ -8,5 +8,8 @@ base:
     - router
   'vm-myreels-bot*':
     - myreels
-  'vm-tachiproxy*':
+  # Exact match -- 'vm-tachiproxy*' would also swallow vm-tachiproxy-mangachan.
+  'vm-tachiproxy':
     - tachiproxy
+  'vm-tachiproxy-mangachan*':
+    - tachiproxy_mangachan

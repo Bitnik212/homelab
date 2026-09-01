@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: $DB_PASSWORD
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  # api and worker are separate builds from the same source/mangachan repo:
+  # worker owns the Flyway migrations and runs the scheduled catalog-refresh
+  # jobs (task-scheduling's JDBC lock manager means only one worker replica
+  # runs a given job even if scaled out); api just serves the HTTP API and
+  # expects the schema worker already migrated. Their EXPOSE'd ports differ
+  # too (confirmed via `docker ps` on first deploy) -- api on 8880, worker
+  # on 8881. Only api is published to the host.
+  api:
+    image: registry.gitlab.com/tachiproxy/source/mangachan/api:develop
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./ca.pem:/app/ca.pem:ro
+    ports:
+      - "8880:8880"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      worker:
+        condition: service_started
+
+  worker:
+    image: registry.gitlab.com/tachiproxy/source/mangachan/worker:develop
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./ca.pem:/app/ca.pem:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
