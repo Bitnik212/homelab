@@ -3,10 +3,14 @@
 
 tachiproxy:
   db_password: 'CHANGEME'
-  api_token: 'CHANGEME'
+
+  # Unset by default -- the API is unauthenticated unless this is set (see
+  # files/env.jinja: '# API_TOKEN=change-me' when absent).
+  # api_token: 'CHANGEME'
 
   # Default is the built-in StaticProxyProvider with an empty upstream list
-  # (no proxies configured yet). Switch to ProxyLineProvider once you have
-  # upstream credentials:
+  # (no proxies configured -- every request 502s). Switch to ProxyLineProvider
+  # once you have upstream credentials:
   # proxy_provider: 'version_proxy.providers.proxyline:ProxyLineProvider'
-  # proxy_provider_options: '{"api_key": "CHANGEME", "protocol": "http", "tags": ["automenu"]}'
+  # proxyline_api_key: 'CHANGEME'
+  # proxy_provider_options: '{"protocol": "http", "tags": ["automenu"]}'

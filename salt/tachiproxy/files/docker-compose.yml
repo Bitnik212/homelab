@@ -22,9 +22,10 @@ services:
       - .env
     # Revision payloads live on the dedicated 30gb disk mounted at
     # /data/tachiproxy (salt/tachiproxy/disk.sls); geoip/mitmproxy state
-    # stays small so it's fine on the root-disk docker volumes.
+    # stays small so it's fine on the root-disk docker volumes. Container
+    # path must match PAYLOAD_STORAGE_ROOT in files/env.jinja.
     volumes:
-      - /data/tachiproxy/payloads:/data/payloads
+      - /data/tachiproxy/payloads:/data/version-proxy/payloads
       - geoip:/data/geoip
       - mitmproxy-ca:/data/mitmproxy
     ports:
@@ -44,13 +45,11 @@ services:
     env_file:
       - .env
     volumes:
-      - /data/tachiproxy/payloads:/data/payloads
+      - /data/tachiproxy/payloads:/data/version-proxy/payloads
       - geoip:/data/geoip
       - mitmproxy-ca:/data/mitmproxy
     ports:
       - "8070:8080"
-    # Waits on the API's healthcheck, which only passes once migrations
-    # (RUN_MIGRATIONS_ON_STARTUP=true, api-only) have completed.
     depends_on:
       api:
         condition: service_healthy
