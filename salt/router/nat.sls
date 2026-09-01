@@ -38,3 +38,32 @@ hashibr_masquerade:
         iptables -t nat -A POSTROUTING -s {{ subnet }} {% if lan_cidr %}! -d {{ lan_cidr }} {% endif %}-j MASQUERADE
     - require:
       - cmd: hashibr_masquerade_cleanup_old
+
+# Rules added via `iptables ... -A` above only live in the running
+# nftables/iptables-nft ruleset -- nothing restores them on reboot (no
+# startup_states configured on this minion, and unlike split-tunnel.sh
+# this rule has no systemd unit re-applying it). That's exactly how this
+# rule went missing after router-1's last reboot and cut hashibr off from
+# the internet. iptables-persistent's netfilter-persistent.service loads
+# /etc/iptables/rules.v4 back in on every boot, so save into it whenever
+# the rule above changes.
+iptables_persistent_debconf:
+  debconf.set:
+    - name: iptables-persistent
+    - data:
+        'iptables-persistent/autosave_v4': {'type': 'boolean', 'value': false}
+        'iptables-persistent/autosave_v6': {'type': 'boolean', 'value': false}
+
+iptables_persistent_pkg:
+  pkg.installed:
+    - name: iptables-persistent
+    - require:
+      - debconf: iptables_persistent_debconf
+
+hashibr_masquerade_persist:
+  cmd.run:
+    - name: netfilter-persistent save
+    - require:
+      - pkg: iptables_persistent_pkg
+    - onchanges:
+      - cmd: hashibr_masquerade
