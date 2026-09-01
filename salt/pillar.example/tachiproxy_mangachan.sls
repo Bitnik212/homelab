@@ -6,9 +6,10 @@ tachiproxy_mangachan:
 
   # vm-tachiproxy's LAN IP (proxmox-terraform/tachiproxy.tf) -- api/worker
   # route scrape traffic through its proxy (:8070) and manage revisions
-  # through its API (:8100). DHCP-assigned, not a static reservation yet
-  # (see HOW_TO_MAKE_STATIC_DHCP_RECORD.md) -- update this if vm-tachiproxy's
-  # lease ever changes.
+  # through its API (:8100). Pinned to a static DHCP reservation on the LAN
+  # router (10.20.10.1) via HOW_TO_MAKE_STATIC_DHCP_RECORD.md's script, so
+  # this should stay stable -- but it's still a plain IP, not discovered,
+  # so update it if the reservation is ever removed/changed.
   tachiproxy_host: '10.20.10.216'
 
   # ktor_log_level: 'DEBUG'
