@@ -21,7 +21,7 @@ services:
   # runs a given job even if scaled out); api just serves the HTTP API and
   # expects the schema worker already migrated. Their EXPOSE'd ports differ
   # too (confirmed via `docker ps` on first deploy) -- api on 8880, worker
-  # on 8881. Only api is published to the host.
+  # on 8881.
   api:
     image: registry.gitlab.com/tachiproxy/source/mangachan/api:develop
     restart: always
@@ -44,6 +44,8 @@ services:
       - .env
     volumes:
       - ./ca.pem:/app/ca.pem:ro
+    ports:
+      - "8881:8881"
     depends_on:
       postgres:
         condition: service_healthy
