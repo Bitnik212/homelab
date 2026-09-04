@@ -23,6 +23,16 @@ resource "proxmox_virtual_environment_vm" "tachiproxy_mangachan" {
     dedicated = 4096
   }
 
+  # Second disk for postgres data (salt/tachiproxy_mangachan/disk.sls formats
+  # and mounts it at /data/tachiproxy-mangachan) -- kept off the template's
+  # 15gb root disk, which the catalog DB filled up. Same pattern as
+  # vm-tachiproxy's scsi1 data disk (proxmox-terraform/tachiproxy.tf).
+  disk {
+    datastore_id = var.vm_datastore_id
+    interface    = "scsi1"
+    size         = 30
+  }
+
   initialization {
     datastore_id = var.vm_datastore_id
 

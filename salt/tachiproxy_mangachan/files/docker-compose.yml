@@ -50,5 +50,12 @@ services:
       postgres:
         condition: service_healthy
 
+# Named volume, but backed by a bind to the scsi1 data disk (disk.sls) so
+# postgres's data lives off the template's 15gb root disk, which it filled.
 volumes:
   postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /data/tachiproxy-mangachan/postgres

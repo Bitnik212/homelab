@@ -1,5 +1,6 @@
 include:
   - docker
+  - tachiproxy_mangachan.disk
 
 tachiproxy_mangachan_dir:
   file.directory:
@@ -8,6 +9,19 @@ tachiproxy_mangachan_dir:
     - group: root
     - mode: '0750'
     - makedirs: True
+
+# postgres's container runs as uid 70 (postgres:17-alpine); the data dir
+# must be writable by it since docker doesn't chown bind mounts like it does
+# named volumes.
+tachiproxy_mangachan_postgres_dir:
+  file.directory:
+    - name: /data/tachiproxy-mangachan/postgres
+    - user: 70
+    - group: 70
+    - mode: '0750'
+    - makedirs: True
+    - require:
+      - mount: tachiproxy_mangachan_data_mounted
 
 tachiproxy_mangachan_compose:
   file.managed:
@@ -43,6 +57,36 @@ tachiproxy_mangachan_ca:
     - require:
       - file: tachiproxy_mangachan_dir
 
+# One-time migration of the old default-local `tachiproxy-mangachan_postgres_data`
+# docker volume (pre-disk.sls deploys) onto the scsi1 data disk: copies its
+# contents into the bind-mount target the compose file's driver_opts now
+# points the *same-named* volume at, then drops the old volume so `docker
+# compose up` can recreate it there instead of erroring over mismatched
+# driver_opts on an existing volume. Stops the stack first so the copy is
+# consistent; copies via a throwaway container so it works regardless of
+# docker's data-root path.
+# Guarded to run at most once: skipped once the bind mount already has data
+# (which also covers "already migrated" since the old volume gets removed
+# below), and skipped entirely on hosts that never had the old volume
+# (fresh deploys).
+tachiproxy_mangachan_migrate_postgres_data:
+  cmd.run:
+    - name: >
+        docker compose stop postgres api worker &&
+        docker run --rm
+        -v tachiproxy-mangachan_postgres_data:/from:ro
+        -v /data/tachiproxy-mangachan/postgres:/to
+        alpine sh -c 'cp -a /from/. /to/ && chown -R 70:70 /to' &&
+        docker volume rm tachiproxy-mangachan_postgres_data
+    - cwd: /opt/tachiproxy-mangachan
+    - onlyif:
+      - docker volume inspect tachiproxy-mangachan_postgres_data
+      - test -z "$(ls -A /data/tachiproxy-mangachan/postgres)"
+    - require:
+      - service: docker_service
+      - file: tachiproxy_mangachan_compose
+      - file: tachiproxy_mangachan_postgres_dir
+
 tachiproxy_mangachan_up:
   cmd.run:
     - name: docker compose up -d
@@ -52,3 +96,5 @@ tachiproxy_mangachan_up:
       - file: tachiproxy_mangachan_compose
       - file: tachiproxy_mangachan_env
       - file: tachiproxy_mangachan_ca
+      - file: tachiproxy_mangachan_postgres_dir
+      - cmd: tachiproxy_mangachan_migrate_postgres_data
