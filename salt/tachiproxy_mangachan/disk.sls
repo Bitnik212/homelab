@@ -19,9 +19,15 @@ tachiproxy_mangachan_data_mount_point:
     - mode: '0750'
     - makedirs: True
 
+# Skipped once the data disk is already mounted: after a reboot flips device
+# enumeration (see note above), the hardcoded {{ data_disk }} guess can itself
+# become the boot disk, which would fail this check even though the real data
+# disk (now under a different /dev path) is already formatted and mounted
+# fine. Nothing left to protect at that point, so don't block on it.
 tachiproxy_mangachan_data_disk_is_not_boot_disk:
   cmd.run:
     - name: test "$(lsblk -no PKNAME "$(findmnt -no SOURCE /boot)")" != "{{ data_disk[5:] }}"
+    - unless: mountpoint -q /data/tachiproxy-mangachan
     - require:
       - file: tachiproxy_mangachan_data_mount_point
 

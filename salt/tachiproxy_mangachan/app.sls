@@ -87,6 +87,18 @@ tachiproxy_mangachan_migrate_postgres_data:
       - file: tachiproxy_mangachan_compose
       - file: tachiproxy_mangachan_postgres_dir
 
+# api/worker track the floating `develop` tag, so pull explicitly on every
+# apply -- `docker compose up -d` alone won't fetch a new image for a tag it
+# already has locally.
+tachiproxy_mangachan_pull:
+  cmd.run:
+    - name: docker compose pull api worker
+    - cwd: /opt/tachiproxy-mangachan
+    - require:
+      - service: docker_service
+      - file: tachiproxy_mangachan_compose
+      - file: tachiproxy_mangachan_env
+
 tachiproxy_mangachan_up:
   cmd.run:
     - name: docker compose up -d
@@ -98,3 +110,4 @@ tachiproxy_mangachan_up:
       - file: tachiproxy_mangachan_ca
       - file: tachiproxy_mangachan_postgres_dir
       - cmd: tachiproxy_mangachan_migrate_postgres_data
+      - cmd: tachiproxy_mangachan_pull
