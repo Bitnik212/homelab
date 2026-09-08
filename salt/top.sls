@@ -15,3 +15,5 @@ base:
     - tachiproxy_mangachan
   'vm-vpn':
     - vpn
+  'vm-elk':
+    - elk
