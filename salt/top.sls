@@ -13,3 +13,5 @@ base:
     - tachiproxy
   'vm-tachiproxy-mangachan*':
     - tachiproxy_mangachan
+  'vm-vpn':
+    - vpn

@@ -29,7 +29,7 @@ resource "proxmox_virtual_environment_vm" "tachiproxy" {
   disk {
     datastore_id = var.vm_datastore_id
     interface    = "scsi1"
-    size         = 30
+    size         = 100
   }
 
   initialization {
