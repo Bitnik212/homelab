@@ -1,0 +1,39 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    restart: always
+    environment:
+      - discovery.type=single-node
+      # Internal-only (vmbr0 LAN, no HA) log store -- security disabled to
+      # skip xpack's kibana_system password bootstrap. Don't expose
+      # 9200/5601 beyond the LAN; add xpack.security.enabled=true (and a
+      # kibana_system password) if that's ever a concern.
+      - xpack.security.enabled=false
+      # Half of vm-elk's 8gb RAM (proxmox-terraform/vm-elk.tf), leaving the
+      # rest for OS page cache.
+      - ES_JAVA_OPTS=-Xms4g -Xmx4g
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - /data/elk/elasticsearch:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.3
+    restart: always
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
