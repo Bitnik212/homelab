@@ -34,9 +34,10 @@ elk_compose:
   file.managed:
     - name: /opt/elk/docker-compose.yml
     - source: salt://elk/files/docker-compose.yml
+    - template: jinja
     - user: root
     - group: root
-    - mode: '0644'
+    - mode: '0600'
     - require:
       - file: elk_dir
 
@@ -49,3 +50,29 @@ elk_up:
       - file: elk_compose
       - file: elk_es_data_dir
       - sysctl: elk_vm_max_map_count
+
+# ELASTIC_PASSWORD only bootstraps the "elastic" superuser -- kibana_system
+# (what Kibana itself authenticates as) has no equivalent env var on the ES
+# image, so its password has to be set through the security API once
+# Elasticsearch is actually up. `elk_up` doesn't return until the compose
+# healthcheck passes (kibana's `depends_on: condition: service_healthy`
+# means compose itself waits), so ES is guaranteed reachable here.
+elk_kibana_system_password:
+  cmd.run:
+    - name: |
+        set -euo pipefail
+        curl -sf -u elastic:{{ pillar['elk']['elastic_password'] }} \
+          -X POST http://localhost:9200/_security/user/kibana_system/_password \
+          -H 'Content-Type: application/json' \
+          -d '{"password":"{{ pillar['elk']['kibana_password'] }}"}'
+        # Kibana already started (and is retrying ES auth in a loop) with
+        # the pillar password before it was actually set above -- restart
+        # it once so it picks up the now-valid credentials immediately
+        # instead of waiting out its own retry backoff.
+        docker compose restart kibana
+    - shell: /bin/bash
+    - cwd: /opt/elk
+    - unless:
+      - curl -sf -u kibana_system:{{ pillar['elk']['kibana_password'] }} http://localhost:9200/_security/_authenticate
+    - require:
+      - cmd: elk_up
