@@ -1,9 +1,11 @@
-# Full-tunnel AmneziaWG client for vm-tachiproxy -- the ISP is blocking
-# outbound HTTP proxy connections outright, so all of this VM's egress
-# needs to go through the tunnel instead, not just select destinations
-# (contrast salt/elk/hashibr_route.sls's per-IP approach, or
-# router.amneziawg's split-tunnel). Same server as router-1's own tunnel
-# (salt/router/amneziawg.sls), just a second peer/client on it.
+# AmneziaWG client for vm-tachiproxy -- the ISP is blocking outbound HTTP
+# proxy connections outright, so the upstream proxy IPs need to go through
+# a tunnel instead. Table = off; tachiproxy.proxyroute routes just the
+# active proxy IPs onto this interface (same per-IP approach as
+# salt/elk/hashibr_route.sls, fed from the proxy provider's API instead of
+# DNS) -- no split-tunnel/default-route state here, unlike router.amneziawg.
+# Same server as router-1's own tunnel (salt/router/amneziawg.sls), just a
+# second peer/client on it.
 #
 # Build steps mirror router.amneziawg (source install, since this distro's
 # repos don't package amneziawg) -- reuses its kmod-build script since

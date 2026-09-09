@@ -1,0 +1,11 @@
+[Unit]
+Description=Run tachiproxy-proxy-route.service every 5 minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+Persistent=true
+Unit=tachiproxy-proxy-route.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,9 @@
+[Unit]
+Description=Route active ProxyLine proxy IPs via wg0
+After=network-online.target awg-quick@wg0.service
+Wants=network-online.target
+Requires=awg-quick@wg0.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/tachiproxy-proxy-route.sh

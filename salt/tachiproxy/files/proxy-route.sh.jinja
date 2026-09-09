@@ -1,0 +1,40 @@
+{%- set api_key = pillar.get('tachiproxy', {}).get('proxyline_api_key', '') -%}
+{%- set dns = pillar.get('tachiproxy', {}).get('amneziawg', {}).get('dns', '') -%}
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Routes vm-tachiproxy's currently-active ProxyLine upstream proxy IPs (and
+# the AmneziaWG interface's own DNS server, so lookups against it aren't
+# stuck behind the same ISP block) via the AmneziaWG tunnel
+# (salt/tachiproxy/amneziawg.sls, Table = off) instead of the normal vmbr0
+# egress -- the ISP blocks outbound HTTP proxy connections directly, so
+# only these destinations actually need the tunnel. Replaces an earlier
+# full-tunnel + RU-ipset split-tunnel setup that didn't work out; this is
+# the same per-IP static-route approach as salt/elk/hashibr_route.sls,
+# just fed from the proxy provider's API instead of DNS. Run on a timer
+# (tachiproxy-proxy-route.timer) rather than just at boot -- ProxyLine
+# rotates which IPs are active over the VM's uptime.
+
+API_KEY="{{ api_key }}"
+BASE_URL="https://panel.proxyline.net/api/proxies/"
+WG_IF="wg0"
+# Comma- or space-separated in pillar; normalized to spaces for the loop.
+DNS_IPS="{{ dns }}"
+
+if [ -z "$API_KEY" ]; then
+  echo "pillar tachiproxy:proxyline_api_key is not set" >&2
+  exit 1
+fi
+
+for ip in ${DNS_IPS//,/ }; do
+  ip route replace "${ip}/32" dev "$WG_IF"
+done
+
+url="${BASE_URL}?api_key=${API_KEY}&status=active"
+while [ -n "$url" ] && [ "$url" != "null" ]; do
+  response=$(curl -sf --max-time 15 "$url")
+  echo "$response" | jq -r '.results[].ip' | while read -r ip; do
+    ip route replace "${ip}/32" dev "$WG_IF"
+  done
+  url=$(echo "$response" | jq -r '.next')
+done
