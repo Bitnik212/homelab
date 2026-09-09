@@ -39,6 +39,23 @@ hashibr_masquerade:
     - require:
       - cmd: hashibr_masquerade_cleanup_old
 
+# wg0's MTU (1420, WireGuard's own overhead) is smaller than hashibr
+# clients' own NIC MTU (1500) -- without this, a hashibr client's TCP SYN
+# advertises an MSS sized for 1500 and nothing downstream corrects it, so
+# any segment that doesn't fit through the tunnel just stalls waiting on
+# Path MTU Discovery that's commonly blackholed in the wild. Bit us as:
+# small requests through the tunnel worked fine (fit in one segment either
+# way), but a large download (e.g. a hashibr-side gitlab-runner's `wget` of
+# a 130MB+ file, versus the same URL working fine run directly on
+# router-1) hung. Locally-originated traffic from router-1 itself never
+# hits this since the kernel already knows wg0's real MTU for its own
+# sockets -- it's specifically a forwarded/NAT'd-traffic problem.
+hashibr_forward_mss_clamp:
+  cmd.run:
+    - name: >-
+        iptables -t mangle -C FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null ||
+        iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+
 # Rules added via `iptables ... -A` above only live in the running
 # nftables/iptables-nft ruleset -- nothing restores them on reboot (no
 # startup_states configured on this minion, and unlike split-tunnel.sh
@@ -67,3 +84,4 @@ hashibr_masquerade_persist:
       - pkg: iptables_persistent_pkg
     - onchanges:
       - cmd: hashibr_masquerade
+      - cmd: hashibr_forward_mss_clamp
