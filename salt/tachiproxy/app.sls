@@ -41,6 +41,18 @@ tachiproxy_env:
     - require:
       - file: tachiproxy_dir
 
+# api/proxy track the floating `dev` tag, so pull explicitly on every
+# apply -- `docker compose up -d` alone won't fetch a new image for a tag
+# it already has locally.
+tachiproxy_pull:
+  cmd.run:
+    - name: docker compose pull api proxy
+    - cwd: /opt/tachiproxy
+    - require:
+      - service: docker_service
+      - file: tachiproxy_compose
+      - file: tachiproxy_env
+
 tachiproxy_up:
   cmd.run:
     - name: docker compose up -d
@@ -50,3 +62,4 @@ tachiproxy_up:
       - file: tachiproxy_compose
       - file: tachiproxy_env
       - file: tachiproxy_payloads_dir
+      - cmd: tachiproxy_pull

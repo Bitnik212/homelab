@@ -16,7 +16,7 @@ services:
       start_period: 5s
 
   api:
-    image: registry.gitlab.com/tachiproxy/versioned-proxy/api:latest
+    image: registry.gitlab.com/tachiproxy/versioned-proxy/api:dev
     restart: always
     env_file:
       - .env
@@ -40,7 +40,7 @@ services:
         condition: service_healthy
 
   proxy:
-    image: registry.gitlab.com/tachiproxy/versioned-proxy/proxy:latest
+    image: registry.gitlab.com/tachiproxy/versioned-proxy/proxy:dev
     restart: always
     env_file:
       - .env
