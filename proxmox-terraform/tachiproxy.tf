@@ -23,15 +23,11 @@ resource "proxmox_virtual_environment_vm" "tachiproxy" {
     dedicated = 4096
   }
 
-  # Second disk for revision payload storage (salt/tachiproxy/disk.sls
-  # formats and mounts it at /data/tachiproxy) -- kept off the template's
-  # 15gb root disk since revisions are expected to grow unbounded.
-  disk {
-    datastore_id = var.vm_datastore_id
-    interface    = "scsi1"
-    size         = 100
-  }
-
+  # The scsi1 second disk this VM used for revision payload storage
+  # (/data/tachiproxy) is gone -- it filled up (99gb) and payloads moved to
+  # an NFS export from the manga-one NAS instead (salt/tachiproxy/disk.sls
+  # mounts it at /mnt/tachiproxy). Migration verified file-for-file on
+  # 2026-09-15 before this disk was detached in Proxmox.
   initialization {
     datastore_id = var.vm_datastore_id
 

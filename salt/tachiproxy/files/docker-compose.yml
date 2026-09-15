@@ -20,12 +20,12 @@ services:
     restart: always
     env_file:
       - .env
-    # Revision payloads live on the dedicated 30gb disk mounted at
-    # /data/tachiproxy (salt/tachiproxy/disk.sls); geoip/mitmproxy state
+    # Revision payloads live on the manga-one NAS, NFS-mounted at
+    # /mnt/tachiproxy (salt/tachiproxy/disk.sls); geoip/mitmproxy state
     # stays small so it's fine on the root-disk docker volumes. Container
     # path must match PAYLOAD_STORAGE_ROOT in files/env.jinja.
     volumes:
-      - /data/tachiproxy/payloads:/data/version-proxy/payloads
+      - /mnt/tachiproxy/payloads:/data/version-proxy/payloads
       - geoip:/data/geoip
       - mitmproxy-ca:/data/mitmproxy
     ports:
@@ -45,7 +45,7 @@ services:
     env_file:
       - .env
     volumes:
-      - /data/tachiproxy/payloads:/data/version-proxy/payloads
+      - /mnt/tachiproxy/payloads:/data/version-proxy/payloads
       - geoip:/data/geoip
       - mitmproxy-ca:/data/mitmproxy
     ports:

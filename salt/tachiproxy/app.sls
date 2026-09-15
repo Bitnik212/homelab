@@ -12,7 +12,7 @@ tachiproxy_dir:
 
 tachiproxy_payloads_dir:
   file.directory:
-    - name: /data/tachiproxy/payloads
+    - name: /mnt/tachiproxy/payloads
     - user: root
     - group: root
     - mode: '0750'
