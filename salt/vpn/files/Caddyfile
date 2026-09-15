@@ -1,0 +1,167 @@
+# The Caddyfile is an easy way to configure your Caddy web server.
+#
+# Unless the file starts with a global options block, the first
+# uncommented line is always the address of your site.
+#
+# To use your own domain name (with automatic HTTPS), first make
+# sure your domain's A/AAAA DNS records are properly pointed to
+# this machine's public IP, then replace ":80" below with your
+# domain name.
+
+#:80 {
+	# Set this path to your site's directory.
+#	root * /usr/share/caddy
+
+	# Enable the static file server.
+#	file_server
+
+	# Another common task is to set up a reverse proxy:
+	# reverse_proxy localhost:8080
+
+	# Or serve a PHP site through php-fpm:
+	# php_fastcgi localhost:9000
+#}
+
+home.srv.bitt.moe {
+  respond "{remote_host}" 200
+}
+
+home.console.wg.vpn.bitt.app {
+	reverse_proxy localhost:13000
+}
+
+# Refer to the Caddy docs for more information:
+# https://caddyserver.com/docs/caddyfile
+
+portainer.home.bitt.app photos.bitt.app portainer.bonch.app docs.bitt.app paste.bitt.app panel.pterodactyl.bitt.app tasks.bitread.team qbt.drive.bitt.app portainer.supabase.bitt.app test-app.supabase.bitt.app automenu.home.bitt.app metrics.bitt.app api.translation.bitt.app graylog.bitt.app http.input.graylog.bitt.app grafana.bitt.app mastodon.bitt.app files.mastodon.bitt.app api.browser.bitt.app office.bitt.app api.reels.bitt.app imgproxy.bitt.app remanga.tachiproxy.bitt.moe pgadmin.remanga.tachiproxy.bitt.moe cdn.manga-one.bitt.app console.cdn.manga-one.bitt.app git.bitt.app registry.bitt.app export.tmdb.bitt.app tmdb.bitt.app {
+	reverse_proxy 10.20.10.28
+}
+
+portainer.plex.bitt.app three.disk.qbt.bitt.app three.disk.files.bitt.app api.sport-achive.bitt.bot portainer.sport-achive.bitt.bot sport-achive.bitt.bot peertube.bitt.app mytube.bitt.app {
+	reverse_proxy 10.20.10.74
+}
+
+one.disk.files.bitt.app one.disk.qbt.bitt.app two.disk.files.bitt.app two.disk.qbt.bitt.app files.music.bitt.app qbt.music.bitt.app music.bitt.app {
+	reverse_proxy 10.20.10.80
+}
+
+minecraft.home.wings.bitt.app:80 {
+	reverse_proxy 192.168.100.69:8080
+}
+
+lv.neko.bitt.app {
+	reverse_proxy 10.20.10.27:8080
+}
+
+*.pocketbase.moe, pocketbase.moe {
+	reverse_proxy 10.20.10.52
+	tls /etc/caddy/ssl/pocketbase.moe/crt.pem /etc/caddy/ssl/pocketbase.moe/key.pem
+}
+
+cloud.bitt.app {
+	reverse_proxy 10.20.10.55
+}
+
+api.news.bonch.app {
+	reverse_proxy 10.20.10.18:8080
+}
+
+drive.bitt.app {
+	reverse_proxy http://seafile.two-data.node.bitt.net.ru 
+#	header_up Host drive.bitt.app
+#        header_up X-Forwarded-Host drive.bitt.app
+#        header_up X-Forwarded-Proto https
+#        header_up X-Real-IP {remote_host}
+#        header_up X-Forwarded-For {remote_host}
+#	}
+ }
+
+home.wg-easy.bitt.net.ru {
+	reverse_proxy 192.168.100.30:13000
+}
+
+*.app.bitt.net.ru {
+	tls /etc/caddy/ssl/bitt.net.ru/crt.pem /etc/caddy/ssl/bitt.net.ru/key.pem
+     reverse_proxy 10.20.10.201:30080 10.20.10.202:30080 10.20.10.203:30080 {
+        lb_policy first
+        lb_try_duration 5s
+        lb_try_interval 250ms
+
+        header_up X-Forwarded-Proto https
+        header_up X-Real-IP {http.request.header.CF-Connecting-IP}
+        header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+    }
+}
+
+sentry.bitt.app torrent-search.bitt.app api.torrent-search.bitt.app chatwoot.bitt.app huly.bitt.app api.encar.bitt.app {
+    reverse_proxy 10.20.10.201:30080 10.20.10.202:30080 10.20.10.203:30080 {
+        lb_policy first
+        lb_try_duration 5s
+        lb_try_interval 250ms
+
+        header_up X-Forwarded-Proto https
+        header_up X-Real-IP {http.request.header.CF-Connecting-IP}
+        header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+    }
+
+}
+
+test-game-vpn.wg-easy.bitt.net.ru {
+	reverse_proxy 10.20.10.203:13000
+}
+
+price-calculation.bitt.app price.autoselect.bitt.app {
+	reverse_proxy 10.20.10.211:8000
+}
+
+console.price-calculation.bitt.app console.price.autoselect.bitt.app {
+        reverse_proxy 10.20.10.211:8080
+}
+
+translate.autoselect.bitt.app {
+	reverse_proxy 10.20.10.211:8098
+}
+
+console.translate.autoselect.bitt.app {
+	reverse_proxy 10.20.10.211:8097
+}
+
+api.encar.autoselect.bitt.app {
+	reverse_proxy 10.20.10.211:8078
+}
+
+worker.encar.autoselect.bitt.app {
+	reverse_proxy 10.20.10.211:8051
+}
+
+worker.autoselect.bitt.app {
+	reverse_proxy 10.20.10.211:8061
+}
+
+api.autoselect.bitt.app {
+	reverse_proxy 10.20.10.211:8060
+}
+
+query.autoselect.bitt.app {
+	reverse_proxy 10.20.10.211:8040
+}
+
+traceway.bitt.app {
+	reverse_proxy 10.20.10.214:80
+}
+
+# vm-tachiproxy-mangachan (proxmox-terraform/tachiproxy-mangachan.tf)
+api.mangachan.tachiproxy.net {
+	reverse_proxy 10.20.10.217:8880
+	tls /etc/caddy/ssl/tachiproxy.net/crt.pem /etc/caddy/ssl/tachiproxy.net/key.pem
+}
+
+worker.mangachan.tachiproxy.net {
+	reverse_proxy 10.20.10.217:8881
+	tls /etc/caddy/ssl/tachiproxy.net/crt.pem /etc/caddy/ssl/tachiproxy.net/key.pem
+}
+
+# vm-elk (proxmox-terraform/vm-elk.tf), LAN-only Kibana on vmbr0
+kibana.bitt.app {
+	reverse_proxy 10.20.10.220:5601
+}
