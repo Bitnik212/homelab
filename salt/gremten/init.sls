@@ -28,6 +28,25 @@ gremten_repo:
       - pkg: gremten_git_pkg
       - file: gremten_dir
 
+# Turbopack's dev server (this image runs `npm run dev`, not a production
+# build) only trusts localhost-ish hosts for its /_next/hmr websocket and
+# rejects anything else -- even when Origin and Host match, as they do here
+# -- by writing a raw, non-HTTP-framed "Unauthorized" straight to the
+# socket. That breaks Caddy's reverse_proxy with a 502 (see
+# salt/vpn/files/Caddyfile's psb.gremten.bitt.app block; regular page loads
+# are unaffected, only hot-reload). allowedDevOrigins is Next's supported
+# fix for a dev server behind a public proxy; patched in locally since
+# upstream hasn't added it. Idempotent (skipped once already present) so it
+# survives repeated highstates without fighting git.latest above, which
+# doesn't force_reset and so leaves this local edit alone.
+gremten_patch_next_config:
+  cmd.run:
+    - name: "sed -i '/^const nextConfig: NextConfig = {$/a\\  allowedDevOrigins: [\"psb.gremten.bitt.app\"],' next.config.ts"
+    - cwd: /opt/gremten/psb
+    - unless: grep -q allowedDevOrigins next.config.ts
+    - require:
+      - git: gremten_repo
+
 gremten_compose:
   file.managed:
     - name: /opt/gremten/docker-compose.yml
@@ -69,4 +88,17 @@ gremten_up:
       - file: gremten_compose
       - file: gremten_env
       - git: gremten_repo
+      - cmd: gremten_patch_next_config
       - cmd: gremten_pull
+
+# next.config.ts is only read at dev-server startup, not hot-reloaded --
+# needed the one time gremten_patch_next_config actually changes the file
+# (a container already running on an unpatched checkout).
+gremten_restart_on_config_patch:
+  cmd.run:
+    - name: docker compose restart app
+    - cwd: /opt/gremten
+    - onchanges:
+      - cmd: gremten_patch_next_config
+    - require:
+      - cmd: gremten_up
