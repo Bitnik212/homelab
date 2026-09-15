@@ -143,7 +143,12 @@ api.autoselect.bitt.app {
 }
 
 query.autoselect.bitt.app {
-	reverse_proxy 10.20.10.211:8040
+	handle_path /worker/* {
+        	reverse_proxy 10.20.10.211:8061
+    	}
+#	handle {
+		reverse_proxy 10.20.10.211:8040
+#	}
 }
 
 traceway.bitt.app {
