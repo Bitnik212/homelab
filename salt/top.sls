@@ -17,3 +17,5 @@ base:
     - vpn
   'vm-elk':
     - elk
+  'vm-gremten':
+    - gremten

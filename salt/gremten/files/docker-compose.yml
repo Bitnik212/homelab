@@ -1,0 +1,20 @@
+services:
+  app:
+    image: ghcr.io/gremten/psb:main
+    restart: always
+    # Reinstall only when the lockfile changed, then start the Next dev
+    # server -- same command the repo's own docker-compose.yml uses, since
+    # this image has no baked-in build step (see salt/gremten/init.sls).
+    command: sh -c "npm install --no-audit --no-fund && npm run dev"
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - /opt/gremten/psb:/app
+      - node_modules:/app/node_modules
+      - next_cache:/app/.next
+
+volumes:
+  node_modules:
+  next_cache:
