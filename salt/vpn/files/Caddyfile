@@ -170,3 +170,8 @@ worker.mangachan.tachiproxy.net {
 kibana.bitt.app {
 	reverse_proxy 10.20.10.220:5601
 }
+
+# vm-gremten (proxmox-terraform/gremten.tf), ghcr.io/gremten/psb:main
+psb.gremten.bitt.app {
+	reverse_proxy 10.20.10.219:3000
+}
