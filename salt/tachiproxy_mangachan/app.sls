@@ -57,6 +57,19 @@ tachiproxy_mangachan_ca:
     - require:
       - file: tachiproxy_mangachan_dir
 
+# Root-owned, not world/group-writable -- filebeat runs as root (see
+# docker-compose.yml) and refuses to start against a config file it
+# considers too permissive.
+tachiproxy_mangachan_filebeat_config:
+  file.managed:
+    - name: /opt/tachiproxy-mangachan/filebeat.yml
+    - source: salt://tachiproxy_mangachan/files/filebeat.yml
+    - user: root
+    - group: root
+    - mode: '0644'
+    - require:
+      - file: tachiproxy_mangachan_dir
+
 # One-time migration of the old default-local `tachiproxy-mangachan_postgres_data`
 # docker volume (pre-disk.sls deploys) onto the scsi1 data disk: copies its
 # contents into the bind-mount target the compose file's driver_opts now
@@ -108,6 +121,19 @@ tachiproxy_mangachan_up:
       - file: tachiproxy_mangachan_compose
       - file: tachiproxy_mangachan_env
       - file: tachiproxy_mangachan_ca
+      - file: tachiproxy_mangachan_filebeat_config
       - file: tachiproxy_mangachan_postgres_dir
       - cmd: tachiproxy_mangachan_migrate_postgres_data
       - cmd: tachiproxy_mangachan_pull
+
+# filebeat.yml is bind-mounted (docker-compose.yml), so editing its content
+# alone doesn't make `docker compose up -d` above recreate the container --
+# restart it explicitly whenever the file actually changes.
+tachiproxy_mangachan_filebeat_restart:
+  cmd.run:
+    - name: docker compose restart filebeat
+    - cwd: /opt/tachiproxy-mangachan
+    - onchanges:
+      - file: tachiproxy_mangachan_filebeat_config
+    - require:
+      - cmd: tachiproxy_mangachan_up

@@ -30,3 +30,11 @@ tachiproxy_mangachan:
   # s3_cache_force_path_style: 'true'
 
   # proxyline_api_key: 'CHANGEME'
+
+# vm-elk's LAN IP and the filebeat_writer_mangachan ES user password (see
+# pillar.example/elk.sls) -- consumed by the filebeat container in
+# salt/tachiproxy_mangachan/files/docker-compose.yml, which ships this
+# host's docker container logs into Kibana.
+elk:
+  host: ''                        # e.g. 10.20.10.220 (vm-elk's static DHCP reservation)
+  filebeat_writer_password: 'CHANGEME'

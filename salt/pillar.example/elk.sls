@@ -21,3 +21,8 @@ elk:
   # scoped to only tachiproxy-logs-*) -- must match pillar/tachiproxy.sls's
   # elk.filebeat_writer_password.
   filebeat_writer_password: 'CHANGEME'
+
+  # Same, but for the filebeat_writer_mangachan ES user (scoped to only
+  # tachiproxy-mangachan-logs-*) -- must match
+  # pillar/tachiproxy_mangachan.sls's elk.filebeat_writer_password.
+  filebeat_writer_mangachan_password: 'CHANGEME'

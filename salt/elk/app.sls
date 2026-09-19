@@ -115,3 +115,44 @@ elk_filebeat_writer_password:
       - curl -sf -u filebeat_writer:{{ pillar['elk']['filebeat_writer_password'] }} http://localhost:9200/_security/_authenticate
     - require:
       - cmd: elk_filebeat_writer_role
+
+# Same as elk_filebeat_writer_{role,password} above, but for
+# salt/tachiproxy_mangachan/app.sls's filebeat container -- kept as its own
+# role/user (rather than widening tachiproxy-logs-* to a shared
+# tachiproxy*-logs-* pattern) so a compromised host only ever holds
+# credentials scoped to its own indices, not a sibling host's too.
+elk_filebeat_writer_mangachan_role:
+  cmd.run:
+    - name: |
+        set -euo pipefail
+        curl -sf -u elastic:{{ pillar['elk']['elastic_password'] }} \
+          -X PUT http://localhost:9200/_security/role/filebeat_writer_mangachan \
+          -H 'Content-Type: application/json' \
+          -d '{
+                "cluster": ["monitor", "manage_index_templates"],
+                "indices": [
+                  {
+                    "names": ["tachiproxy-mangachan-logs-*"],
+                    "privileges": ["create_index", "create_doc", "manage", "view_index_metadata"]
+                  }
+                ]
+              }'
+    - shell: /bin/bash
+    - cwd: /opt/elk
+    - require:
+      - cmd: elk_up
+
+elk_filebeat_writer_mangachan_password:
+  cmd.run:
+    - name: |
+        set -euo pipefail
+        curl -sf -u elastic:{{ pillar['elk']['elastic_password'] }} \
+          -X PUT http://localhost:9200/_security/user/filebeat_writer_mangachan \
+          -H 'Content-Type: application/json' \
+          -d '{"password":"{{ pillar['elk']['filebeat_writer_mangachan_password'] }}","roles":["filebeat_writer_mangachan"]}'
+    - shell: /bin/bash
+    - cwd: /opt/elk
+    - unless:
+      - curl -sf -u filebeat_writer_mangachan:{{ pillar['elk']['filebeat_writer_mangachan_password'] }} http://localhost:9200/_security/_authenticate
+    - require:
+      - cmd: elk_filebeat_writer_mangachan_role
