@@ -14,6 +14,16 @@ services:
       timeout: 3s
       retries: 10
       start_period: 5s
+    # Root disk has no dedicated data volume for this (unlike
+    # /mnt/tachiproxy's payloads) -- caps each container's on-disk logs
+    # instead of leaving json-file to grow unbounded. filebeat below tails
+    # these same files, so 3x10m is buffer for it to catch up before
+    # docker rotates a segment out from under it.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   api:
     image: registry.gitlab.com/tachiproxy/versioned-proxy/api:dev
@@ -38,6 +48,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   proxy:
     image: registry.gitlab.com/tachiproxy/versioned-proxy/proxy:dev
@@ -53,8 +68,37 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Ships postgres/api/proxy's docker logs to Kibana on vm-elk (pillar
+  # elk.host) as the filebeat_writer user (salt/elk/app.sls). Runs as root
+  # since /var/lib/docker/containers and docker.sock are root-owned; the
+  # "container" autodiscover input below reads the same json-file logs the
+  # logging: blocks above cap the size of.
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.15.3
+    restart: always
+    user: root
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - filebeat_data:/usr/share/filebeat/data
+    environment:
+      - ELK_HOST=$ELK_HOST
+      - ELK_FILEBEAT_PASSWORD=$ELK_FILEBEAT_PASSWORD
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   postgres_data:
   geoip:
   mitmproxy-ca:
+  filebeat_data:

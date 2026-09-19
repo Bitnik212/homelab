@@ -1,0 +1,40 @@
+# Autodiscovers every container on this host (postgres/api/proxy -- and
+# itself) via the docker socket and tails its json-file log, no per-service
+# config needed as containers come and go. Unconditional template (no
+# condition:, no hints.enabled) so every container is captured by default --
+# none of postgres/api/proxy carry co.elastic.logs/* opt-in labels, so a
+# hints-based setup would ship nothing.
+filebeat.autodiscover:
+  providers:
+    - type: docker
+      templates:
+        - config:
+            - type: container
+              paths:
+                - /var/lib/docker/containers/${data.docker.container.id}/*.log
+
+# Tags every event with which VM it came from, since vm-elk is meant to
+# collect from more than just this host eventually.
+fields:
+  host_alias: vm-tachiproxy
+fields_under_root: true
+
+output.elasticsearch:
+  hosts: ["${ELK_HOST}:9200"]
+  username: "filebeat_writer"
+  password: "${ELK_FILEBEAT_PASSWORD}"
+  # Custom name (rather than the default filebeat-* alias) so the
+  # filebeat_writer ES role (salt/elk/app.sls) can be scoped to just this
+  # host's indices.
+  index: "tachiproxy-logs-%{+yyyy.MM.dd}"
+
+# Required whenever output.elasticsearch.index is overridden. ILM is off
+# since filebeat_writer isn't granted manage_ilm -- ES still auto-creates a
+# new backing data stream per day from the %{+yyyy.MM.dd} in the index name
+# above (confirmed: docs land in .ds-tachiproxy-logs-<date>-<date>-000001),
+# just with no rollover/retention policy managing it. vm-elk has a
+# dedicated 300G disk (proxmox-terraform/vm-elk.tf) for now, so that's fine
+# until retention actually matters.
+setup.template.name: "tachiproxy-logs"
+setup.template.pattern: "tachiproxy-logs-*"
+setup.ilm.enabled: false

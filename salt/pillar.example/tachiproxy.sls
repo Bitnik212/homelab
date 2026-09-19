@@ -47,3 +47,11 @@ tachiproxy:
     # relevant for the destinations tachiproxy.proxyroute actually routes
     # onto this interface -- Table = off, so awg-quick installs no routes
     # of its own, and there's no split-tunnel/default-route state here).
+
+# vm-elk's LAN IP and the filebeat_writer ES user password (see
+# pillar.example/elk.sls) -- consumed by the filebeat container in
+# salt/tachiproxy/files/docker-compose.yml, which ships this host's docker
+# container logs into Kibana.
+elk:
+  host: ''                        # e.g. 10.20.10.220 (vm-elk's static DHCP reservation)
+  filebeat_writer_password: 'CHANGEME'

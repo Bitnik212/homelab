@@ -16,3 +16,8 @@ elk:
   encryptedsavedobjects_key: 'CHANGEME'
   security_encryption_key: 'CHANGEME'
   reporting_encryption_key: 'CHANGEME'
+
+  # Password for the filebeat_writer ES user (salt/elk/app.sls creates it,
+  # scoped to only tachiproxy-logs-*) -- must match pillar/tachiproxy.sls's
+  # elk.filebeat_writer_password.
+  filebeat_writer_password: 'CHANGEME'

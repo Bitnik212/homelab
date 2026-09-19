@@ -76,3 +76,42 @@ elk_kibana_system_password:
       - curl -sf -u kibana_system:{{ pillar['elk']['kibana_password'] }} http://localhost:9200/_security/_authenticate
     - require:
       - cmd: elk_up
+
+# Scoped writer for salt/tachiproxy/app.sls's filebeat container -- can
+# only create/write tachiproxy-logs-* (its own indices) rather than
+# authenticating as the elastic superuser from another host.
+elk_filebeat_writer_role:
+  cmd.run:
+    - name: |
+        set -euo pipefail
+        curl -sf -u elastic:{{ pillar['elk']['elastic_password'] }} \
+          -X PUT http://localhost:9200/_security/role/filebeat_writer \
+          -H 'Content-Type: application/json' \
+          -d '{
+                "cluster": ["monitor", "manage_index_templates"],
+                "indices": [
+                  {
+                    "names": ["tachiproxy-logs-*"],
+                    "privileges": ["create_index", "create_doc", "manage", "view_index_metadata"]
+                  }
+                ]
+              }'
+    - shell: /bin/bash
+    - cwd: /opt/elk
+    - require:
+      - cmd: elk_up
+
+elk_filebeat_writer_password:
+  cmd.run:
+    - name: |
+        set -euo pipefail
+        curl -sf -u elastic:{{ pillar['elk']['elastic_password'] }} \
+          -X PUT http://localhost:9200/_security/user/filebeat_writer \
+          -H 'Content-Type: application/json' \
+          -d '{"password":"{{ pillar['elk']['filebeat_writer_password'] }}","roles":["filebeat_writer"]}'
+    - shell: /bin/bash
+    - cwd: /opt/elk
+    - unless:
+      - curl -sf -u filebeat_writer:{{ pillar['elk']['filebeat_writer_password'] }} http://localhost:9200/_security/_authenticate
+    - require:
+      - cmd: elk_filebeat_writer_role
