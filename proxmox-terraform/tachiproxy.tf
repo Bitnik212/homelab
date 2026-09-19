@@ -27,7 +27,10 @@ resource "proxmox_virtual_environment_vm" "tachiproxy" {
   # (/data/tachiproxy) is gone -- it filled up (99gb) and payloads moved to
   # an NFS export from the manga-one NAS instead (salt/tachiproxy/disk.sls
   # mounts it at /mnt/tachiproxy). Migration verified file-for-file on
-  # 2026-09-15 before this disk was detached in Proxmox.
+  # 2026-09-15. Dropping this block does NOT detach the disk in Proxmox --
+  # the bpg/proxmox provider leaves untracked disks alone -- so it was
+  # unlinked directly via the API instead (now sits as unused0, storage not
+  # yet purged).
   initialization {
     datastore_id = var.vm_datastore_id
 

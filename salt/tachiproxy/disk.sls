@@ -3,8 +3,20 @@
 # as scsi1 (proxmox-terraform/tachiproxy.tf) -- that disk filled up (99gb,
 # 100% used) and all its data has been migrated to the NFS export as of
 # 2026-09-15 (verified file-for-file match before cutover). The scsi1 disk
-# itself is still attached/mounted at /data/tachiproxy pending manual
-# removal in Proxmox + Terraform; nothing here manages it anymore.
+# has been unlinked from the VM in Proxmox directly (API unlink, not
+# Terraform -- dropping the `disk` block alone doesn't detach it, confirmed
+# via the node's API showing scsi1 still fully attached after that change
+# was applied); it now sits as unused0 with the underlying volume kept
+# around pending a manual decision to purge it. This unmounts the old local
+# mount and drops it from fstab so nothing tries to remount a device that
+# no longer exists on the VM.
+tachiproxy_data_unmounted:
+  mount.unmounted:
+    - name: /data/tachiproxy
+    - device: LABEL=tachiproxy-data
+    - fstype: ext4
+    - persist: True
+
 tachiproxy_nfs_common:
   pkg.installed:
     - name: nfs-common
