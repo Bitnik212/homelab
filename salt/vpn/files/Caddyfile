@@ -175,3 +175,11 @@ kibana.bitt.app {
 psb.gremten.bitt.app {
 	reverse_proxy 10.20.10.219:3000
 }
+
+worker.dongchedi.autoselect.bitt.app {
+	reverse_proxy 10.20.10.211:8052
+}
+
+api.dongchedi.autoselect.bitt.app {
+	reverse_proxy 10.20.10.211:8079
+}
