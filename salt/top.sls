@@ -19,3 +19,5 @@ base:
     - elk
   'vm-gremten':
     - gremten
+  'vm-curseforge':
+    - curseforge

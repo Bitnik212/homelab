@@ -183,3 +183,10 @@ worker.dongchedi.autoselect.bitt.app {
 api.dongchedi.autoselect.bitt.app {
 	reverse_proxy 10.20.10.211:8079
 }
+
+# vm-curseforge (proxmox-terraform/curseforge.tf) is hashibr-only, so this
+# goes via router-1's nginx vhost (pillar/router.sls proxy.vhosts), which
+# proxies on to the container's port 8000.
+repo.curseforge.bitt.app {
+	reverse_proxy 10.20.10.140:80
+}

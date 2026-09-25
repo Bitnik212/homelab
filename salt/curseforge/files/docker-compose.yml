@@ -1,0 +1,26 @@
+services:
+  web:
+    image: registry.gitlab.com/bitnik212/curseforge-api:develop
+    restart: always
+    # Root, not the image's own uid 1000 "app" user: the NFS export below is
+    # root-owned 0755 with maproot=root on the NAS, so only root can write.
+    user: "0:0"
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    # Source checkout from salt/curseforge/app.sls (the dev image has none).
+    # Artifacts go to the NFS mount (salt/curseforge/disk.sls) -- the export
+    # root itself. The sqlite DB stays on a local volume -- not safe on NFS.
+    volumes:
+      - /opt/curseforge/src:/app
+      - /mnt/curseforge:/srv/storage
+      - data:/srv/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  data:
