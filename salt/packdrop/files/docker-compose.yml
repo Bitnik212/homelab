@@ -1,0 +1,47 @@
+# Mirrors the repo's docker/compose.prod.yaml, but from the CI-built
+# registry image instead of a local build.
+name: packdrop
+
+x-app: &app
+  image: registry.gitlab.com/bitnik212/packdrop:latest
+  env_file: .env.prod
+  # Reach the CurseForge proxy (CURSEFORGE_API_URL) at 10.20.10.4 directly
+  # over the vmbr0 NIC instead of via its public DNS record.
+  extra_hosts:
+    - "repo.curseforge.bitt.app:10.20.10.4"
+  volumes:
+    - data:/srv/data     # SQLite database
+    # Built mods.zip files and stored mod icons, on the NAS
+    # (salt/packdrop/disk.sls).
+    - /mnt/packdrop:/srv/media
+  restart: always
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  app:
+    <<: *app
+    # nginx inside the container listens on 8080. 8001 on the host since
+    # curseforge-api already has 8000; router-1's nginx vhost for
+    # packdrop.bitt.app (pillar/router.sls proxy.vhosts) points here.
+    ports:
+      - "8001:8080"
+    environment:
+      RUN_MIGRATIONS: "1"
+      PACKDROP_ZIP_BUILDER: worker   # the worker service builds zips
+      CACHE_URL: db                  # shared between the uWSGI processes and the worker
+
+  worker:
+    <<: *app
+    command: ["python", "manage.py", "zip_worker"]
+    environment:
+      PACKDROP_ZIP_BUILDER: worker
+      CACHE_URL: db
+    depends_on:
+      - app   # app runs the migrations
+
+volumes:
+  data:

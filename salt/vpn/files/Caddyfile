@@ -190,3 +190,9 @@ api.dongchedi.autoselect.bitt.app {
 repo.curseforge.bitt.app {
 	reverse_proxy 10.20.10.140:80
 }
+
+# Packdrop, also on vm-curseforge (salt/packdrop) -- same path as above,
+# router-1's nginx vhost proxies on to the container's port 8001.
+packdrop.bitt.app {
+	reverse_proxy 10.20.10.140:80
+}

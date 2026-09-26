@@ -21,3 +21,4 @@ base:
     - gremten
   'vm-curseforge':
     - curseforge
+    - packdrop
