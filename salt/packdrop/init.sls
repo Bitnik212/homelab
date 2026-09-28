@@ -35,6 +35,8 @@ packdrop_env:
     - name: /opt/packdrop/.env.prod
     - source: salt://packdrop/files/env.jinja
     - template: jinja
+    - context:
+        domain: packdrop.bitt.app
     - user: root
     - group: root
     - mode: '0600'

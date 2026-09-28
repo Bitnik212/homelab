@@ -1,0 +1,45 @@
+# Dev deployment of packdrop (salt/packdrop/dev.sls): the same prod-target
+# layout as docker-compose.yml, but from the :develop image, on its own
+# compose project, port and storage so it can't touch prod's data.
+name: packdrop-dev
+
+x-app: &app
+  image: registry.gitlab.com/bitnik212/packdrop:develop
+  env_file: .env.prod
+  extra_hosts:
+    - "repo.curseforge.bitt.app:10.20.10.4"
+  volumes:
+    - data:/srv/data     # SQLite database
+    # Built mods.zip files and stored mod icons -- a local dir, not prod's
+    # NAS export (dev.sls chowns it to the image's uid 1000).
+    - /opt/packdrop-dev/media:/srv/media
+  restart: always
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  app:
+    <<: *app
+    # 8000 is curseforge-api, 8001 prod packdrop; router-1's nginx vhost for
+    # dev.packdrop.bitt.app (pillar/router.sls proxy.vhosts) points here.
+    ports:
+      - "8002:8080"
+    environment:
+      RUN_MIGRATIONS: "1"
+      PACKDROP_ZIP_BUILDER: worker
+      CACHE_URL: db
+
+  worker:
+    <<: *app
+    command: ["python", "manage.py", "zip_worker"]
+    environment:
+      PACKDROP_ZIP_BUILDER: worker
+      CACHE_URL: db
+    depends_on:
+      - app
+
+volumes:
+  data:

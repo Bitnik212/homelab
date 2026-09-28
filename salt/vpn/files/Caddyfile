@@ -196,3 +196,9 @@ repo.curseforge.bitt.app {
 packdrop.bitt.app {
 	reverse_proxy 10.20.10.140:80
 }
+
+# Packdrop's dev deployment (salt/packdrop/dev.sls), same path again;
+# router-1's nginx vhost proxies on to port 8002.
+dev.packdrop.bitt.app {
+	reverse_proxy 10.20.10.140:80
+}

@@ -22,3 +22,4 @@ base:
   'vm-curseforge':
     - curseforge
     - packdrop
+    - packdrop.dev
