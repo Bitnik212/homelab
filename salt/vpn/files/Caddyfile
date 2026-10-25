@@ -166,6 +166,12 @@ worker.mangachan.tachiproxy.net {
 	tls /etc/caddy/ssl/tachiproxy.net/crt.pem /etc/caddy/ssl/tachiproxy.net/key.pem
 }
 
+# Proxy API on vm-tachiproxy (salt/tachiproxy/proxyapi.sls); Caddy's default
+# X-Forwarded-Proto is what TRUST_X_FORWARDED_PROTO in its .env relies on.
+proxy.bitt.app {
+	reverse_proxy 10.20.10.216:8200
+}
+
 # vm-elk (proxmox-terraform/vm-elk.tf), LAN-only Kibana on vmbr0
 kibana.bitt.app {
 	reverse_proxy 10.20.10.220:5601

@@ -1,0 +1,55 @@
+# Proxy API (https://gitlab.com/Bitnik212/proxyapi), the proxy registry
+# panel/API (salt/tachiproxy/proxyapi.sls). Follows the repo's own
+# docker-compose.dev.yml for the :develop image (runserver, DEBUG on) on its
+# own compose project, so it never touches /opt/tachiproxy's stack.
+name: proxyapi
+
+x-app: &app
+  image: registry.gitlab.com/bitnik212/proxyapi:develop
+  env_file: .env
+  # SQLite DB + GeoIP database, shared by web and worker. Never mount over
+  # /app itself, it would hide the image's code.
+  volumes:
+    - data:/app/var
+  depends_on:
+    - redis
+  restart: always
+  # Same caps as /opt/tachiproxy's containers -- its filebeat autodiscovers
+  # every container on the host, so these ship to vm-elk too.
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  web:
+    <<: *app
+    # 8100 is tachiproxy's api, 8070 its proxy.
+    ports:
+      - "8200:8000"
+
+  worker:
+    <<: *app
+    environment:
+      # web runs migrations and the GeoIP download; doing it twice races on
+      # SQLite.
+      DJANGO_MIGRATE: "0"
+      GEOIP_DOWNLOAD: "0"
+    # Worker + beat (Proxyline sync, health checks) in one container.
+    command: celery -A main worker -B -l info -s /tmp/celerybeat-schedule
+    depends_on:
+      - redis
+      - web
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  data:

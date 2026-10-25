@@ -1,0 +1,27 @@
+{%- set t = pillar['tachiproxy'] %}
+{%- set p = t.get('proxyapi', {}) %}
+DEBUG=1
+SECRET_KEY={{ p['secret_key'] }}
+# Public as proxy.bitt.app through vm-vpn's Caddy (salt/vpn/files/Caddyfile),
+# which terminates TLS. '*' if the pillar leaves this unset.
+ALLOWED_HOSTS={{ p.get('allowed_hosts', '*') }}
+{%- if p.get('csrf_trusted_origins') %}
+CSRF_TRUSTED_ORIGINS={{ p['csrf_trusted_origins'] }}
+TRUST_X_FORWARDED_PROTO=1
+{%- endif %}
+TIME_ZONE=UTC
+
+DATABASE_URL=sqlite:////app/var/db.sqlite3
+REDIS_URL=redis://redis:6379/1
+CELERY_BROKER_URL=redis://redis:6379/0
+
+PROXY_HEALTH_INTERVAL={{ p.get('health_interval', 10) }}
+PROXY_HEALTH_TIMEOUT={{ p.get('health_timeout', 5) }}
+PROXY_HEALTH_URL={{ p.get('health_url', 'https://www.gstatic.com/generate_204') }}
+PROXY_HEALTH_CONCURRENCY={{ p.get('health_concurrency', 100) }}
+PROXY_HEALTH_BATCH={{ p.get('health_batch', 500) }}
+
+PROXYLINE_SYNC_CRON_MINUTE={{ p.get('proxyline_sync_cron_minute', '*/30') }}
+# Bootstraps the "default" Proxyline account on first sync; falls back to
+# the key tachiproxy's own ProxyLineProvider uses (files/env.jinja).
+PROXYLINE_API_KEY={{ p.get('proxyline_api_key', t.get('proxyline_api_key', '')) }}

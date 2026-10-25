@@ -19,6 +19,19 @@ tachiproxy:
   # to route the active upstream proxy IPs via the AmneziaWG tunnel below
   # (needs a real key, not the commented-out default).
 
+  # Proxy API panel/registry (salt/tachiproxy/proxyapi.sls), on :8200.
+  proxyapi:
+    secret_key: 'CHANGEME'          # Django SECRET_KEY, long random string
+    allowed_hosts: 'proxy.bitt.app,10.20.10.216,localhost'  # unset = '*'
+    csrf_trusted_origins: 'https://proxy.bitt.app'  # also turns on TRUST_X_FORWARDED_PROTO
+    # proxyline_api_key: ''         # defaults to tachiproxy.proxyline_api_key
+    # proxyline_sync_cron_minute: '*/30'
+    # health_interval: 10           # seconds
+    # health_timeout: 5             # seconds, keep below the interval
+    # health_url: 'https://www.gstatic.com/generate_204'
+    # health_concurrency: 100
+    # health_batch: 500
+
   # AmneziaWG client (salt/tachiproxy/amneziawg.sls) -- for when the ISP
   # blocks outbound HTTP proxy connections directly. Table = off:
   # tachiproxy.proxyroute routes only the active upstream proxy IPs onto

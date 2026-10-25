@@ -4,3 +4,4 @@ include:
   - tachiproxy.app
   - tachiproxy.amneziawg
   - tachiproxy.proxyroute
+  - tachiproxy.proxyapi
