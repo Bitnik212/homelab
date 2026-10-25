@@ -22,6 +22,9 @@ caddy_service:
   service.running:
     - name: caddy
     - enable: True
+    # Graceful reload on config changes instead of a restart that drops
+    # every site at once.
+    - reload: True
     - require:
       - file: caddy_config
     - watch:

@@ -209,6 +209,48 @@ dev.packdrop.bitt.app {
 	reverse_proxy 10.20.10.140:80
 }
 
+chat.bitt.app {
+	reverse_proxy 10.20.10.227:3000
+}
+
+ai.bitt.app {
+	header {
+		Access-Control-Allow-Origin "*"
+		Access-Control-Allow-Methods "GET, POST, OPTIONS"
+		Access-Control-Allow-Headers "*"
+		Access-Control-Max-Age "86400"
+		defer
+	}
+
+	@options method OPTIONS
+	handle @options {
+		respond 204
+	}
+
+	@nov1 not path /v1/* /review /health
+	rewrite @nov1 /v1{uri}
+
+	@authorized header Authorization "Bearer sk-test"
+	handle @authorized {
+		reverse_proxy 10.20.10.227:8000 {
+			#header_up Host localhost:11434
+			header_up -Origin
+			header_up -Referer
+			header_down -Access-Control-Allow-Origin
+			flush_interval -1
+		}
+	}
+	handle {
+		respond "Unauthorized" 401
+	}
+
+	# errors (502, 504…) also get CORS headers, so the plugin shows the real error
+	handle_errors {
+		header Access-Control-Allow-Origin "*"
+		respond "{err.status_code} {err.status_text}"
+	}
+}
+
 nexus.bitt.app {
 	reverse_proxy 10.20.10.228
 }
