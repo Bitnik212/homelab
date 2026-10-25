@@ -56,3 +56,29 @@ variable "cluster_bridge" {
   type        = string
   default     = "hashibr"
 }
+
+# TODO: fill in with the actual bridge name on each physical Proxmox host
+# before running plan/apply -- bridge naming isn't necessarily consistent
+# across one-main/one-data/two-data the way it is for the single-host
+# cluster_bridge above.
+variable "postgres_mgmt_bridge" {
+  description = "Bridge for the dedicated Postgres/HAProxy network (10.10.10.0/24, DHCP) on each physical Proxmox node -- carries mgmt/Salt/SSH traffic AND Patroni's Raft consensus AND Postgres streaming replication; there is no separate sync-only network by design"
+  type        = map(string)
+  default = {
+    "one-main" = ""
+    "one-data" = ""
+    "two-data" = ""
+  }
+}
+
+variable "postgres_data_disk_size" {
+  description = "Size (GB) of each Patroni-managed Postgres node's data disk"
+  type        = number
+  default     = 20
+}
+
+variable "haproxy_node" {
+  description = "Which physical Proxmox node hosts the HAProxy VM in front of the Postgres/Patroni cluster"
+  type        = string
+  default     = "one-main"
+}
