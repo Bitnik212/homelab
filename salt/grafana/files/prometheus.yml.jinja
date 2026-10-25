@@ -1,0 +1,20 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # One static target per minion, from pillar grafana.node_targets. The
+  # instance label is overridden with the minion name (rather than the
+  # default ip:port) so the Node Exporter Full dashboard's "Host" picker
+  # reads like `salt-key -L`.
+  - job_name: node
+    static_configs:
+{%- for t in pillar['grafana']['node_targets'] %}
+      - targets: ['{{ t['address'] }}:{{ t.get('port', 9100) }}']
+        labels:
+          instance: '{{ t['name'] }}'
+{%- endfor %}

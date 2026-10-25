@@ -1,0 +1,15 @@
+apiVersion: 1
+
+# Loads every JSON under salt/grafana/files/dashboards (mounted at
+# /var/lib/grafana-dashboards). node-exporter-full.json is grafana.com
+# dashboard 1860 ("Node Exporter Full") revision 45, vendored as-is -- its
+# datasource is a template variable, so it picks up the default Prometheus
+# datasource above without any import-time rewriting.
+providers:
+  - name: node-exporter
+    folder: Node Exporter
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana-dashboards

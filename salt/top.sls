@@ -27,3 +27,5 @@ base:
     - packdrop.dev
   'vm-nexus':
     - nexus
+  'vm-grafana':
+    - grafana

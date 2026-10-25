@@ -1,0 +1,40 @@
+services:
+  prometheus:
+    image: prom/prometheus:v3.4.0
+    restart: always
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - /data/grafana/prometheus:/prometheus
+    # LAN-only, no Caddy route -- handy for checking target health at
+    # http://<vm-grafana>:9090/targets.
+    ports:
+      - "9090:9090"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - /data/grafana/grafana:/var/lib/grafana
+      - ./provisioning:/etc/grafana/provisioning:ro
+      - ./dashboards:/var/lib/grafana-dashboards:ro
+    # vm-vpn's Caddy proxies grafana.bitt.app here.
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

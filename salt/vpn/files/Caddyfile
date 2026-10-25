@@ -33,7 +33,7 @@ home.console.wg.vpn.bitt.app {
 # Refer to the Caddy docs for more information:
 # https://caddyserver.com/docs/caddyfile
 
-portainer.home.bitt.app photos.bitt.app portainer.bonch.app docs.bitt.app paste.bitt.app panel.pterodactyl.bitt.app tasks.bitread.team qbt.drive.bitt.app portainer.supabase.bitt.app test-app.supabase.bitt.app automenu.home.bitt.app metrics.bitt.app api.translation.bitt.app graylog.bitt.app http.input.graylog.bitt.app grafana.bitt.app mastodon.bitt.app files.mastodon.bitt.app api.browser.bitt.app office.bitt.app api.reels.bitt.app imgproxy.bitt.app remanga.tachiproxy.bitt.moe pgadmin.remanga.tachiproxy.bitt.moe cdn.manga-one.bitt.app console.cdn.manga-one.bitt.app git.bitt.app registry.bitt.app export.tmdb.bitt.app tmdb.bitt.app {
+portainer.home.bitt.app photos.bitt.app portainer.bonch.app docs.bitt.app paste.bitt.app panel.pterodactyl.bitt.app tasks.bitread.team qbt.drive.bitt.app portainer.supabase.bitt.app test-app.supabase.bitt.app automenu.home.bitt.app metrics.bitt.app api.translation.bitt.app graylog.bitt.app http.input.graylog.bitt.app mastodon.bitt.app files.mastodon.bitt.app api.browser.bitt.app office.bitt.app api.reels.bitt.app imgproxy.bitt.app remanga.tachiproxy.bitt.moe pgadmin.remanga.tachiproxy.bitt.moe cdn.manga-one.bitt.app console.cdn.manga-one.bitt.app git.bitt.app registry.bitt.app export.tmdb.bitt.app tmdb.bitt.app {
 	reverse_proxy 10.20.10.28
 }
 
@@ -181,6 +181,11 @@ worker.remanga.tachiproxy.net {
 # X-Forwarded-Proto is what TRUST_X_FORWARDED_PROTO in its .env relies on.
 proxy.bitt.app {
 	reverse_proxy 10.20.10.216:8200
+}
+
+# vm-grafana (proxmox-terraform/grafana.tf, salt/grafana)
+grafana.bitt.app {
+	reverse_proxy 10.20.10.231:3000
 }
 
 # vm-elk (proxmox-terraform/vm-elk.tf), LAN-only Kibana on vmbr0
