@@ -208,3 +208,7 @@ packdrop.bitt.app {
 dev.packdrop.bitt.app {
 	reverse_proxy 10.20.10.140:80
 }
+
+nexus.bitt.app {
+	reverse_proxy 10.20.10.228
+}

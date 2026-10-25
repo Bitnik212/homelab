@@ -23,3 +23,5 @@ base:
     - curseforge
     - packdrop
     - packdrop.dev
+  'vm-nexus':
+    - nexus

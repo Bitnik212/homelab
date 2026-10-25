@@ -1,0 +1,73 @@
+{%- set n = pillar.get('nexus', {}) -%}
+# Managed by salt (salt/nexus/nginx.sls).
+
+proxy_cache_path /mnt/nexus/nginx-cache levels=1:2 keys_zone=artifacts:50m
+                 max_size={{ n.get('nginx_cache_max_size', '50g') }} inactive=90d use_temp_path=off;
+
+upstream nexus {
+    server 127.0.0.1:8081;
+    keepalive 16;
+}
+
+server {
+    listen 80 default_server;
+    server_name _;
+
+    # Uploads (hosted repos, if ever added) can be arbitrarily large.
+    client_max_body_size 0;
+
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    # Nexus builds absolute URLs (npm tarball links etc.) from these, so
+    # clients get links back to whichever address they used (LAN vs
+    # hashibr IP).
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 300s;
+
+    # Shared by both cached locations below. Authenticated requests skip
+    # the cache entirely -- anything that needs credentials mustn't be
+    # served to anonymous clients from cache. Nexus's own Cache-Control /
+    # cookies are ignored: the TTLs here are the policy.
+    proxy_cache_bypass $http_authorization;
+    proxy_no_cache $http_authorization;
+    proxy_ignore_headers Cache-Control Expires Set-Cookie;
+    proxy_cache_lock on;
+    proxy_cache_lock_timeout 5m;
+    proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+    proxy_cache_background_update on;
+
+    # Versioned artifact files (wheels/sdists, npm tarballs, jars/poms and
+    # their checksums) never change once published -- cache them long, and
+    # key them by path alone so LAN and hashibr clients share entries.
+    location ~* ^/repository/.+\.(whl|tar\.gz|tgz|zip|egg|jar|war|aar|pom|module|asc|sha1|sha256|sha512|md5)$ {
+        proxy_pass http://nexus;
+        proxy_cache artifacts;
+        proxy_cache_key "$request_uri";
+        proxy_cache_valid 200 30d;
+        proxy_cache_valid 404 1m;
+        proxy_hide_header Set-Cookie;
+        add_header X-Cache-Status $upstream_cache_status always;
+    }
+
+    # Index/metadata (PyPI /simple/ pages, npm package documents,
+    # maven-metadata.xml) changes as new versions publish -- short TTL.
+    # Keyed by Host (npm documents embed absolute tarball URLs built from
+    # it) and Accept (npm asks for the abbreviated vs full document by it).
+    location /repository/ {
+        proxy_pass http://nexus;
+        proxy_cache artifacts;
+        proxy_cache_key "$http_host$request_uri$http_accept";
+        proxy_cache_valid 200 5m;
+        proxy_cache_valid 404 1m;
+        proxy_hide_header Set-Cookie;
+        add_header X-Cache-Status $upstream_cache_status always;
+    }
+
+    # UI and REST API -- never cached.
+    location / {
+        proxy_pass http://nexus;
+    }
+}

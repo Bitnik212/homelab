@@ -1,0 +1,21 @@
+services:
+  nexus:
+    image: sonatype/nexus3:${NEXUS_TAG}
+    restart: always
+    # Loopback only -- clients go through nginx on :80 (salt/nexus/
+    # nginx.sls), which adds the artifact cache in front.
+    ports:
+      - "127.0.0.1:8081:8081"
+    # Embedded DB, config and logs on a local volume; only the blob store
+    # (the actual artifact bytes) is on the NAS -- see salt/nexus/disk.sls.
+    volumes:
+      - nexus-data:/nexus-data
+      - /mnt/nexus/blobs:/nexus-data/blobs
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  nexus-data:

@@ -1,0 +1,64 @@
+{%- set n = pillar.get('nexus', {}) -%}
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Idempotent first-run setup of Nexus over its REST API (salt/nexus/
+# app.sls runs this on every apply): admin password from pillar, EULA
+# acceptance (Community Edition refuses to serve until it's accepted),
+# anonymous read access (so pip/npm/maven clients need no credentials),
+# and the proxy repos. maven-central (+ maven-public group) ships with
+# Nexus by default, so only pypi/npm are created here.
+
+NEXUS="http://127.0.0.1:8081"
+API="${NEXUS}/service/rest/v1"
+ADMIN_PASSWORD='{{ n['admin_password'] }}'
+AUTH=(-u "admin:${ADMIN_PASSWORD}")
+
+# First boot (DB init, plugin load) takes a couple of minutes.
+for _ in $(seq 1 60); do
+  curl -fsS -o /dev/null "${API}/status/writable" && break
+  sleep 5
+done
+curl -fsS -o /dev/null "${API}/status/writable" || { echo "Nexus didn't come up" >&2; exit 1; }
+
+# Fresh install: admin's password is the random one Nexus wrote to
+# /nexus-data/admin.password -- swap it for pillar's.
+code=$(curl -s -o /dev/null -w '%{http_code}' "${AUTH[@]}" "${API}/status/check")
+if [ "$code" = 401 ]; then
+  initial=$(cd /opt/nexus && docker compose exec -T nexus cat /nexus-data/admin.password)
+  curl -fsS -u "admin:${initial}" -X PUT -H 'Content-Type: text/plain' \
+    --data "${ADMIN_PASSWORD}" "${API}/security/users/admin/change-password"
+  echo "admin password set from pillar"
+fi
+
+# 404 on versions predating the CE EULA -- nothing to accept there.
+eula=$(curl -fsS "${AUTH[@]}" "${API}/system/eula" 2>/dev/null || true)
+if [ -n "$eula" ] && [ "$(jq -r '.accepted' <<<"$eula")" = false ]; then
+  jq '.accepted = true' <<<"$eula" | curl -fsS "${AUTH[@]}" -X POST \
+    -H 'Content-Type: application/json' --data @- "${API}/system/eula"
+  echo "EULA accepted"
+fi
+
+curl -fsS "${AUTH[@]}" -X PUT -H 'Content-Type: application/json' \
+  --data '{"enabled": true, "userId": "anonymous", "realmName": "NexusAuthorizingRealm"}' \
+  "${API}/security/anonymous" >/dev/null
+
+ensure_proxy_repo() {
+  local format="$1" name="$2" remote="$3"
+  if [ "$(curl -s -o /dev/null -w '%{http_code}' "${AUTH[@]}" "${API}/repositories/${name}")" = 200 ]; then
+    return 0
+  fi
+  jq -n --arg name "$name" --arg remote "$remote" '{
+    name: $name,
+    online: true,
+    storage: {blobStoreName: "default", strictContentTypeValidation: true},
+    proxy: {remoteUrl: $remote, contentMaxAge: 1440, metadataMaxAge: 1440},
+    negativeCache: {enabled: true, timeToLive: 1440},
+    httpClient: {blocked: false, autoBlock: true}
+  }' | curl -fsS "${AUTH[@]}" -X POST -H 'Content-Type: application/json' \
+    --data @- "${API}/repositories/${format}/proxy"
+  echo "created ${format} proxy repo ${name} -> ${remote}"
+}
+
+ensure_proxy_repo pypi pypi-proxy https://pypi.org
+ensure_proxy_repo npm npm-proxy https://registry.npmjs.org
