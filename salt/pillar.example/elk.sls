@@ -26,3 +26,9 @@ elk:
   # tachiproxy-mangachan-logs-*) -- must match
   # pillar/tachiproxy_mangachan.sls's elk.filebeat_writer_password.
   filebeat_writer_mangachan_password: 'CHANGEME'
+
+  # Same, but for the filebeat_writer_lv ES user (scoped to only
+  # lv_vpn-logs-*) -- lv isn't a Salt minion in this repo (headscale-only host,
+  # reachable from vm-elk), so this password is also copied by hand into
+  # filebeat's config on that host rather than templated via pillar.
+  filebeat_writer_lv_password: 'CHANGEME'

@@ -156,3 +156,50 @@ elk_filebeat_writer_mangachan_password:
       - curl -sf -u filebeat_writer_mangachan:{{ pillar['elk']['filebeat_writer_mangachan_password'] }} http://localhost:9200/_security/_authenticate
     - require:
       - cmd: elk_filebeat_writer_mangachan_role
+
+# Same as elk_filebeat_writer_{role,password} above, but for the lv host
+# (188.253.22.148, headscale-only reachability -- not a Salt minion in this
+# repo, so its filebeat is configured by hand rather than via a salt/lv
+# state dir). Own role/user, scoped to just lv_vpn-logs-*, for the same
+# reason as filebeat_writer_mangachan: a compromised host only ever holds
+# credentials for its own indices. Index pattern is lv_vpn-logs-* (not
+# lv-logs-* like the role name might suggest) to match the index name
+# actually configured in filebeat.yml on lv itself -- confirmed against the
+# "unauthorized ... on indices [lv_vpn-logs-*]" errors in
+# /var/log/filebeat/filebeat-events-data*.ndjson on lv after the first
+# highstate scoped it to the wrong pattern.
+elk_filebeat_writer_lv_role:
+  cmd.run:
+    - name: |
+        set -euo pipefail
+        curl -sf -u elastic:{{ pillar['elk']['elastic_password'] }} \
+          -X PUT http://localhost:9200/_security/role/filebeat_writer_lv \
+          -H 'Content-Type: application/json' \
+          -d '{
+                "cluster": ["monitor", "manage_index_templates"],
+                "indices": [
+                  {
+                    "names": ["lv_vpn-logs-*"],
+                    "privileges": ["create_index", "create_doc", "manage", "view_index_metadata"]
+                  }
+                ]
+              }'
+    - shell: /bin/bash
+    - cwd: /opt/elk
+    - require:
+      - cmd: elk_up
+
+elk_filebeat_writer_lv_password:
+  cmd.run:
+    - name: |
+        set -euo pipefail
+        curl -sf -u elastic:{{ pillar['elk']['elastic_password'] }} \
+          -X PUT http://localhost:9200/_security/user/filebeat_writer_lv \
+          -H 'Content-Type: application/json' \
+          -d '{"password":"{{ pillar['elk']['filebeat_writer_lv_password'] }}","roles":["filebeat_writer_lv"]}'
+    - shell: /bin/bash
+    - cwd: /opt/elk
+    - unless:
+      - curl -sf -u filebeat_writer_lv:{{ pillar['elk']['filebeat_writer_lv_password'] }} http://localhost:9200/_security/_authenticate
+    - require:
+      - cmd: elk_filebeat_writer_lv_role
