@@ -1,1 +1,0 @@
-mobileproxy.passport.yandex.net

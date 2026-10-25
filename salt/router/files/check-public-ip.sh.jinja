@@ -1,42 +1,43 @@
 #!/usr/bin/env bash
 set -u
 
-# Verifies router-1's public egress IP still matches the AmneziaWG
-# endpoint (i.e. traffic is actually leaving via wg0, not WAN) and
-# re-runs split-tunnel.sh if it's drifted. Run every 5 min via cron
-# (router.publicip_check state); templated so REQUIRED_IP always tracks
-# pillar's router.splittunnel.wg_endpoint_ip instead of drifting out of
-# sync with it.
+# Verifies router-1's public egress IP is still the xray server's (i.e.
+# traffic is actually leaving via sing-box -> xray, not plain WAN) and
+# restarts xray-client + sing-box if it's drifted. Run every 5 min via
+# cron (router.publicip_check). Templated so EXPECTED_IP tracks pillar.
+#
+# Leaves a deliberately stopped sing-box alone (manual stop, or
+# router.singbox's rollback timer firing) -- restarting it here would
+# defeat that rollback within 5 minutes.
 
-{%- set st = pillar.get('router', {}).get('splittunnel', {}) %}
+{%- set xr = pillar.get('router', {}).get('xray', {}) %}
 
-WORKDIR="/opt/splittunnel"
-SPLIT_TUNNEL_SCRIPT="./split-tunnel.sh"
+EXPECTED_IP="{{ xr.get('expected_egress_ip') or xr.get('server_ip', '') }}"
 
-# Public IP that MUST be returned -- the AmneziaWG endpoint's resolved IP
-# (see router.splittunnel / split-tunnel.sh.jinja, same pillar key).
-REQUIRED_IP="{{ st.get('wg_endpoint_ip', '') }}"
+# Must be a non-RU service: with router:singbox:direct_ru on, a RU-hosted
+# checker (the old 2ip.io) is routed direct and always reports WAN's IP.
+CHECK_URL="https://ifconfig.me"
 
-CHECK_URL="https://2ip.io"
+ts() { date '+%Y-%m-%d %H:%M:%S'; }
+
+if ! systemctl is-active --quiet sing-box; then
+    echo "$(ts) sing-box is not active, skipping check."
+    exit 0
+fi
 
 current_ip="$(curl -4 -fsS --max-time 10 "$CHECK_URL" | tr -d '[:space:]')"
 
 if [[ -z "$current_ip" ]]; then
-    echo "$(date '+%Y-%m-%d %H:%M:%S') ERROR: Failed to get public IP from $CHECK_URL"
+    echo "$(ts) ERROR: Failed to get public IP from $CHECK_URL"
     exit 1
 fi
 
-echo "$(date '+%Y-%m-%d %H:%M:%S') Current IP: $current_ip"
+echo "$(ts) Current IP: $current_ip"
 
-if [[ "$current_ip" != "$REQUIRED_IP" ]]; then
-    echo "$(date '+%Y-%m-%d %H:%M:%S') Expected $REQUIRED_IP, got $current_ip. Restarting split tunnel..."
-
-    cd "$WORKDIR" || {
-        echo "ERROR: Cannot cd to $WORKDIR"
-        exit 1
-    }
-
-    "$SPLIT_TUNNEL_SCRIPT"
+if [[ "$current_ip" != "$EXPECTED_IP" ]]; then
+    echo "$(ts) Expected $EXPECTED_IP, got $current_ip. Restarting xray-client and sing-box..."
+    systemctl restart xray-client
+    systemctl restart sing-box
 else
-    echo "$(date '+%Y-%m-%d %H:%M:%S') IP is correct. Nothing to do."
+    echo "$(ts) IP is correct. Nothing to do."
 fi

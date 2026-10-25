@@ -1,8 +1,8 @@
 include:
   - router.forwarding
   - router.dns
-  - router.amneziawg
-  - router.splittunnel
+  - router.xray
+  - router.singbox
   - router.publicip_check
   - router.dhcp
   - router.nat

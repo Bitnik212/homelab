@@ -1,0 +1,23 @@
+{%- set ports = pillar.get('router', {}).get('singbox', {}).get('incoming_bypass_ports', [22, 80, 443]) -%}
+#!/usr/bin/env bash
+set -e
+
+# Run as sing-box.service's ExecStartPost (router.singbox): replies from
+# these local service ports go via the main table (WAN) instead of
+# sing-box's tun0 auto_route. Priorities 8900+ sit ahead of sing-box's own
+# rules (9000+) and clear of the 40-200 range router.splittunnel used to
+# own. `del` first since `ip rule add` isn't idempotent.
+
+rules=(
+{%- for port in ports %}
+  "{{ 8900 + loop.index0 }} {{ port }}"
+{%- endfor %}
+)
+
+for item in "${rules[@]}"; do
+  priority="${item%% *}"
+  sport="${item##* }"
+
+  ip rule del sport "$sport" table main priority "$priority" 2>/dev/null || true
+  ip rule add sport "$sport" table main priority "$priority"
+done
