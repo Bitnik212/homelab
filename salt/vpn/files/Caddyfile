@@ -224,41 +224,33 @@ chat.bitt.app {
 	reverse_proxy 10.20.10.227:3000
 }
 
-ai.bitt.app {
+free.text-spectator-ai.bitt.app {
 	header {
-		Access-Control-Allow-Origin "*"
+		Access-Control-Allow-Origin *
 		Access-Control-Allow-Methods "GET, POST, OPTIONS"
-		Access-Control-Allow-Headers "*"
-		Access-Control-Max-Age "86400"
-		defer
+		Access-Control-Allow-Headers "Authorization, Content-Type"
+		Access-Control-Expose-Headers "Cache-Status"
+		Access-Control-Max-Age 86400
+		Vary Origin
 	}
 
-	@options method OPTIONS
-	handle @options {
+	# Preflight: must come before the auth check,
+	# browsers don't send Authorization on OPTIONS
+	@preflight method OPTIONS
+	handle @preflight {
 		respond 204
 	}
 
-	@nov1 not path /v1/* /review /health
-	rewrite @nov1 /v1{uri}
-
-	@authorized header Authorization "Bearer sk-test"
-	handle @authorized {
-		reverse_proxy 10.20.10.227:8000 {
-			#header_up Host localhost:11434
-			header_up -Origin
-			header_up -Referer
+	handle {
+		reverse_proxy http://10.20.10.227:8000 {
+			header_up Host {upstream_hostport}
+			header_up -Authorization   # don't leak PROXY_KEY to Ollama
+			header_up -Origin          # Caddy handles CORS; avoids Ollama's 403 on unknown origins
 			header_down -Access-Control-Allow-Origin
+			header_down -Access-Control-Allow-Methods
+			header_down -Access-Control-Allow-Headers
 			flush_interval -1
 		}
-	}
-	handle {
-		respond "Unauthorized" 401
-	}
-
-	# errors (502, 504…) also get CORS headers, so the plugin shows the real error
-	handle_errors {
-		header Access-Control-Allow-Origin "*"
-		respond "{err.status_code} {err.status_text}"
 	}
 }
 
