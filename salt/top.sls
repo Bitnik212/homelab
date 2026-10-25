@@ -13,6 +13,8 @@ base:
     - tachiproxy
   'vm-tachiproxy-mangachan*':
     - tachiproxy_mangachan
+  'vm-tachiproxy-remanga*':
+    - tachiproxy_remanga
   'vm-vpn':
     - vpn
   'vm-elk':

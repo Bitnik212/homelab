@@ -32,3 +32,8 @@ elk:
   # reachable from vm-elk), so this password is also copied by hand into
   # filebeat's config on that host rather than templated via pillar.
   filebeat_writer_lv_password: 'CHANGEME'
+
+  # Same, but for the filebeat_writer_remanga ES user (scoped to only
+  # tachiproxy-remanga-logs-*) -- must match
+  # pillar/tachiproxy_remanga.sls's elk.filebeat_writer_password.
+  filebeat_writer_remanga_password: 'CHANGEME'

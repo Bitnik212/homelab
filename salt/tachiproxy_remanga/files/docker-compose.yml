@@ -1,0 +1,111 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: $DB_PASSWORD
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    # Caps each container's on-disk logs instead of leaving json-file to grow
+    # unbounded on the root disk. filebeat below tails these same files, so
+    # 3x10m is buffer for it to catch up before docker rotates a segment out
+    # from under it.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # api and worker are separate images from the same source/remanga repo
+  # (its .gitlab-ci.yml pushes $CI_REGISTRY_IMAGE and .../worker): worker
+  # owns the migrations and scrapes ReManga through vm-tachiproxy's
+  # versioned proxy; api only reads the database. Ports are the images'
+  # EXPOSE'd ones -- api on 8080, worker on 8081.
+  api:
+    image: registry.gitlab.com/tachiproxy/source/remanga:latest
+    restart: always
+    env_file:
+      - .env
+    environment:
+      APP_NAME: remanga-api
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      worker:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  worker:
+    image: registry.gitlab.com/tachiproxy/source/remanga/worker:latest
+    restart: always
+    env_file:
+      - .env
+    environment:
+      APP_NAME: remanga-worker
+    volumes:
+      - ./ca.pem:/app/ca.pem:ro
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Same check as upstream's docker-compose.develop.yml -- api waits on it
+    # so it doesn't start against a not-yet-migrated schema.
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8081 && printf \"GET /health HTTP/1.0\\r\\n\\r\\n\" >&3 && grep -q ok <&3'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Ships postgres/api/worker's docker logs to Kibana on vm-elk (pillar
+  # elk.host) as the filebeat_writer_remanga user (salt/elk/app.sls). Runs
+  # as root since /var/lib/docker/containers and docker.sock are root-owned.
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.15.3
+    restart: always
+    user: root
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - filebeat_data:/usr/share/filebeat/data
+    environment:
+      - ELK_HOST=$ELK_HOST
+      - ELK_FILEBEAT_PASSWORD=$ELK_FILEBEAT_PASSWORD
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Named volume, but backed by a bind to the scsi1 data disk (disk.sls) so
+# postgres's data lives off the template's 15gb root disk.
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /data/tachiproxy-remanga/postgres
+  filebeat_data:

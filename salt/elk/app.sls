@@ -157,6 +157,44 @@ elk_filebeat_writer_mangachan_password:
     - require:
       - cmd: elk_filebeat_writer_mangachan_role
 
+# Same as elk_filebeat_writer_mangachan_{role,password} above, for
+# salt/tachiproxy_remanga/app.sls's filebeat container.
+elk_filebeat_writer_remanga_role:
+  cmd.run:
+    - name: |
+        set -euo pipefail
+        curl -sf -u elastic:{{ pillar['elk']['elastic_password'] }} \
+          -X PUT http://localhost:9200/_security/role/filebeat_writer_remanga \
+          -H 'Content-Type: application/json' \
+          -d '{
+                "cluster": ["monitor", "manage_index_templates"],
+                "indices": [
+                  {
+                    "names": ["tachiproxy-remanga-logs-*"],
+                    "privileges": ["create_index", "create_doc", "manage", "view_index_metadata"]
+                  }
+                ]
+              }'
+    - shell: /bin/bash
+    - cwd: /opt/elk
+    - require:
+      - cmd: elk_up
+
+elk_filebeat_writer_remanga_password:
+  cmd.run:
+    - name: |
+        set -euo pipefail
+        curl -sf -u elastic:{{ pillar['elk']['elastic_password'] }} \
+          -X PUT http://localhost:9200/_security/user/filebeat_writer_remanga \
+          -H 'Content-Type: application/json' \
+          -d '{"password":"{{ pillar['elk']['filebeat_writer_remanga_password'] }}","roles":["filebeat_writer_remanga"]}'
+    - shell: /bin/bash
+    - cwd: /opt/elk
+    - unless:
+      - curl -sf -u filebeat_writer_remanga:{{ pillar['elk']['filebeat_writer_remanga_password'] }} http://localhost:9200/_security/_authenticate
+    - require:
+      - cmd: elk_filebeat_writer_remanga_role
+
 # Same as elk_filebeat_writer_{role,password} above, but for the lv host
 # (188.253.22.148, headscale-only reachability -- not a Salt minion in this
 # repo, so its filebeat is configured by hand rather than via a salt/lv
