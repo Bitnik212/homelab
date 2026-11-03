@@ -5,8 +5,7 @@ set -e
 # Run as sing-box.service's ExecStartPost (router.singbox): replies from
 # these local service ports go via the main table (WAN) instead of
 # sing-box's tun0 auto_route. Priorities 8900+ sit ahead of sing-box's own
-# rules (9000+) and clear of the 40-200 range router.splittunnel used to
-# own. `del` first since `ip rule add` isn't idempotent.
+# rules (9000+). `del` first since `ip rule add` isn't idempotent.
 
 rules=(
 {%- for port in ports %}

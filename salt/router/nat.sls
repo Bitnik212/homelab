@@ -1,15 +1,14 @@
-# General NAT for the hashibr network, separate from split-tunnel.sh's
-# AWG-specific fwmark-based MASQUERADE.
+# General NAT for the hashibr network.
 #
 # Must NOT masquerade traffic destined for the local LAN (lan_cidr): the
 # Salt master lives there, and NAT'ing that traffic hides minions' real
 # 10.30.30.x source IPs, breaking the master's ability to route back to
 # them. Only genuinely external traffic gets masqueraded.
 #
-# No -o <iface> restriction: split-tunnel.sh's pref 200 sends most external
-# traffic via wg0, not eth0 (WAN) -- restricting this to -o eth0 leaves
-# tunnel-routed hashibr traffic un-NAT'd, leaking a private, non-routable
-# source IP into the tunnel with no way for anything to reply to it.
+# No -o <iface> restriction: router.singbox sends most external traffic via
+# tun0, not eth0 (WAN) -- restricting this to -o eth0 leaves tunnel-routed
+# hashibr traffic un-NAT'd, leaking a private, non-routable source IP into
+# the tunnel with no way for anything to reply to it.
 
 {%- set h = pillar.get('router', {}).get('hashibr', {}) %}
 {%- set st = pillar.get('router', {}).get('splittunnel', {}) %}

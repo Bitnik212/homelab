@@ -14,19 +14,31 @@ router:
     local_records: []
     #  - {name: 'vault.home.', value: '10.10.10.51'}
 
-  # Xray VLESS/REALITY client (router.xray) + sing-box tun (router.singbox),
-  # replacing the old AmneziaWG wg0 + split-tunnel setup. Both configs are
-  # generated from vless_url by router.proxy_config -- the highstate
-  # refuses to render until vless_url and server_ip are set.
-  xray:
-    vless_url: ''           # vless://UUID@host:443?security=reality&pbk=...&sid=...&sni=...&fp=chrome&flow=xtls-rprx-vision
-    # Resolved IP of the VLESS server -- excluded from tun0 so xray's own
-    # connection to it isn't looped back into itself. Re-check if DNS moves.
-    server_ip: ''
-    force_port: 443         # overrides the URL's port (setup-xray-singbox.sh's FORCE_PORT)
-    socks_port: 1080        # xray's local SOCKS inbound that sing-box feeds
-    # Public IP router.publicip_check expects to see; defaults to server_ip.
-    # Set it if the server egresses from a different address.
+  # AmneziaWG client (router.amneziawg, wg0 with Table = off) + sing-box tun
+  # (router.singbox), which dials out bound to wg0. The highstate refuses to
+  # render until endpoint is set.
+  amneziawg:
+    private_key: ''
+    address: ''             # e.g. '10.8.0.4/32, fdcc:ad94:bacf:61a4::cafe:4/128'
+    mtu: 1420
+    dns: ''                 # e.g. '1.1.1.1, 2606:4700:4700::1111'
+    Jc: 0
+    Jmin: 0
+    Jmax: 0
+    S1: 0
+    S2: 0
+    H1: 0
+    H2: 0
+    H3: 0
+    H4: 0
+    server_public_key: ''
+    preshared_key: ''
+    # IPv4:port, not a hostname -- the IP is excluded from tun0 so wg0's own
+    # packets aren't looped back into the tunnel.
+    endpoint: ''
+    persistent_keepalive: 0
+    # Public IP router.publicip_check expects to see; defaults to the
+    # endpoint's. Set it if the server egresses from a different address.
     expected_egress_ip: ''
 
   singbox:
@@ -42,11 +54,9 @@ router:
     # with `systemctl stop rollback-singbox.timer`, then set back to 0.
     rollback_after_seconds: 0
 
-  # Still read by router.nat (wan_if, lan_cidr) and router.awg_teardown
-  # (wan_if, wg_endpoint_ip -- to clean up after the old split tunnel).
+  # Still read by router.nat (wan_if, lan_cidr).
   splittunnel:
     wan_if: ''    # e.g. ens18 / eth0
-    wg_endpoint_ip: ''  # old AWG endpoint IP, only for teardown
     lan_cidr: ''  # e.g. 10.20.10.0/24
 
   # router-1's second NIC — gateway/DHCP/NAT for the cluster bridge

@@ -1,21 +1,26 @@
 # sing-box tun (tun0) on router-1 -- steers router-1's own traffic and
-# everything it forwards for hashibr into router.xray's local SOCKS proxy,
-# replacing router.splittunnel's wg0 + RU-ipset policy routing (torn down
-# by router.awg_teardown). Salt version of install-xray-singbox.sh's
-# sing-box half plus setup-xray-singbox.sh; config.json itself comes from
-# router.proxy_config.
+# everything it forwards for hashibr into router.amneziawg's wg0, except
+# what route rules send direct (RU, private ranges). Salt version of
+# install-xray-singbox.sh's sing-box half plus setup-xray-singbox.sh;
+# config.json itself comes from router.proxy_config.
 #
 # hashibr's NAT keeps working unchanged: router.nat masquerades
 # 10.30.30.0/24 with no -o restriction, so forwarded traffic routed into
-# tun0 gets SNAT'd onto it the same way it used to onto wg0.
+# tun0 gets SNAT'd onto it.
 
 {%- set sb = pillar.get('router', {}).get('singbox', {}) %}
 {%- set rollback = sb.get('rollback_after_seconds', 0) | int %}
 
 include:
-  - router.xray
-  - router.awg_teardown
+  - router.amneziawg
   - router.proxy_config
+
+singbox_deps:
+  pkg.installed:
+    - pkgs:
+      - curl
+      - ca-certificates
+      - iproute2
 
 # deb-install.sh pulls the latest release .deb from GitHub and dpkg -i's
 # it (no apt repo, so this never upgrades on its own) -- it downloads into
@@ -26,8 +31,7 @@ singbox_install:
     - cwd: /tmp
     - unless: test -x /usr/bin/sing-box
     - require:
-      - pkg: xray_deps
-      - cmd: awg_teardown_routing
+      - pkg: singbox_deps
 
 singbox_config_dir:
   file.directory:
@@ -54,6 +58,10 @@ singbox_dropin:
     - makedirs: True
     - mode: '0644'
     - contents: |
+        [Unit]
+        After=awg-quick@wg0.service
+        Wants=awg-quick@wg0.service
+
         [Service]
         ExecStartPost=/usr/local/sbin/sing-box-bypass-incoming.sh
     - require:
@@ -85,13 +93,12 @@ singbox_rollback_arm:
       - file: singbox_dropin
       - file: singbox_bypass_incoming_script
     # Arm as late as possible, i.e. right before singbox_service --
-    # otherwise the xray install + AWG teardown in between can eat the
-    # whole window and the timer fires before sing-box has even started.
+    # otherwise the AWG build in between can eat the whole window and the
+    # timer fires before sing-box has even started.
     - require:
       - cmd: singbox_install
       - cmd: singbox_reload
-      - service: xray_client_service
-      - cmd: awg_teardown_routing
+      - service: wg0_service
     - require_in:
       - service: singbox_service
 {%- endif %}
@@ -104,8 +111,7 @@ singbox_service:
       - cmd: singbox_install
       - cmd: singbox_reload
       - file: singbox_config
-      - service: xray_client_service
-      - cmd: awg_teardown_routing
+      - service: wg0_service
     - watch:
       - file: singbox_config
       - file: singbox_dropin

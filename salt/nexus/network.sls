@@ -4,7 +4,7 @@ include:
 
 # Same NIC layout as vm-curseforge (salt/curseforge/network.sls): net0 on
 # hashibr carries the default route (so Nexus's upstream fetches go out
-# router-1's xray tunnel), net1 on vmbr0 is for LAN clients and the NAS's
+# router-1's AWG tunnel), net1 on vmbr0 is for LAN clients and the NAS's
 # NFS export only. Both NICs are DHCP, so without this net1's lease also
 # installs an equal-metric default route. Dropping DHCP routes/DNS on it
 # leaves just its on-link 10.20.10.0/24 route, which is all LAN clients and
