@@ -14,21 +14,38 @@ set -u
 
 EXPECTED_IP="{{ awg.get('expected_egress_ip') or awg.get('endpoint', '').rpartition(':')[0] }}"
 
-# Must be a non-RU service: with router:singbox:direct_ru on, a RU-hosted
+# Must be non-RU services: with router:singbox:direct_ru on, a RU-hosted
 # checker (the old 2ip.io) is routed direct and always reports WAN's IP.
-CHECK_URL="https://ifconfig.me"
+# Several, so one checker being down doesn't read as a dead tunnel.
+CHECK_URLS=("https://ifconfig.me" "https://api.ipify.org" "https://icanhazip.com")
 
 ts() { date '+%Y-%m-%d %H:%M:%S'; }
+
+restart_tunnel() {
+    systemctl restart awg-quick@wg0
+    systemctl restart sing-box
+}
 
 if ! systemctl is-active --quiet sing-box; then
     echo "$(ts) sing-box is not active, skipping check."
     exit 0
 fi
 
-current_ip="$(curl -4 -fsS --max-time 10 "$CHECK_URL" | tr -d '[:space:]')"
+current_ip=""
+for url in "${CHECK_URLS[@]}"; do
+    candidate="$(curl -4 -fsS --max-time 10 "$url" | tr -d '[:space:]')"
+    if [[ "$candidate" =~ ^[0-9]+(\.[0-9]+){3}$ ]]; then
+        current_ip="$candidate"
+        break
+    fi
+    echo "$(ts) WARN: No usable answer from $url"
+done
 
+# Egress through the tunnel being dead looks exactly like this -- a stalled
+# tunnel never drifts to WAN's IP, it just stops answering.
 if [[ -z "$current_ip" ]]; then
-    echo "$(ts) ERROR: Failed to get public IP from $CHECK_URL"
+    echo "$(ts) ERROR: No checker answered. Restarting awg-quick@wg0 and sing-box..."
+    restart_tunnel
     exit 1
 fi
 
@@ -36,8 +53,7 @@ echo "$(ts) Current IP: $current_ip"
 
 if [[ "$current_ip" != "$EXPECTED_IP" ]]; then
     echo "$(ts) Expected $EXPECTED_IP, got $current_ip. Restarting awg-quick@wg0 and sing-box..."
-    systemctl restart awg-quick@wg0
-    systemctl restart sing-box
+    restart_tunnel
 else
     echo "$(ts) IP is correct. Nothing to do."
 fi
